@@ -1,16 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import Navbar from "./components/Navbar";
+import Home from "./pages/home";
+import Home2 from "./pages/Home2";
+import Home3 from "./pages/Home3";
+import Home4 from "./pages/Home4";
+import About from "./pages/About";
+import ContactUS from "./pages/ContactUs";
+import Footer from "./components/Footer";
+
+import "./App.css";
 
 function App() {
-
   return (
-    <>
+    <div>
+      <Navbar />
+      <Home/>
+      <Home2 />
+      <Home3/>
+      <Home4/>
+      <About/>
+      <ContactUS/>
+      <Footer/>
       
-       <h1> This is DCPSNPS OFFICIAL SITE...</h1>
-    </>
-  )
+      
+    </div>
+  );
 }
 
-export default App
+export default App;
