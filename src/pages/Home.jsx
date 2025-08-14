@@ -1,7 +1,9 @@
 import pensionhand from '../assets/pension1.png';
 import Chat from './Chat.jsx';
 
+
 export default function Home() {
+
   return (
     <section id="Home"
       className="relative min-h-screen flex flex-col md:flex-row items-center justify-between 
@@ -72,6 +74,7 @@ export default function Home() {
         
       {/* Right: Chat Component */}
      <Chat />
+       
     </section>
   );
 }

@@ -1,8 +1,8 @@
 //  social links array
 const socialLinks = [
-  { icon: "fab fa-facebook-f", label: "Facebook", href: "#" },
-  { icon: "fab fa-twitter", label: "Twitter", href: "#" },
-  { icon: "fab fa-youtube", label: "YouTube", href: "#" },
+  { icon: "fab fa-facebook-f", label: "Facebook", href: "https://www.facebook.com/dcpsnps?mibextid=ZbWKwL" },
+  { icon: "fab fa-twitter", label: "Twitter", href: "https://x.com/DcpsEmployees?t=BwyC5HZs2lcvQwi1iC2ZxQ&s=08" },
+  { icon: "fab fa-youtube", label: "YouTube", href: "https://youtube.com/@dcpsemployessfoundation?si=xWFdcH8MLmhxb2LY" },
   { icon: "fas fa-envelope", label: "Email", href: "#" },
 ];
 

@@ -1,4 +1,4 @@
-// src/components/Chat.jsx
+// ======Chat bot Implementation======//
 import { useState } from "react";
 import { FaComments, FaPaperPlane } from "react-icons/fa";
 
