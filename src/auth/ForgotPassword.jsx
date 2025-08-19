@@ -13,27 +13,19 @@ import { sendPasswordResetEmail } from "firebase/auth";
  *  - onSwitchToLogin: switches to Login modal after process
  */
 const ForgotPassword = ({ onClose, onSwitchToLogin }) => {
-  // State to store email entered by user
   const [email, setEmail] = useState("");
-  // Loading state to disable button during request
   const [loading, setLoading] = useState(false);
 
-  /**
-   * Handle form submission
-   * Sends Firebase password reset email to the entered user email
-   */
   const handleSubmit = async () => {
     if (!email) {
       alert("Please enter your email");
       return;
     }
-
     try {
       setLoading(true);
-      // Send reset email using Firebase Auth
       await sendPasswordResetEmail(auth, email);
       alert(`Password reset link has been sent to ${email}`);
-      onSwitchToLogin(); // Redirect user back to login screen
+      onSwitchToLogin();
     } catch (error) {
       alert(error.message);
     } finally {
@@ -43,27 +35,28 @@ const ForgotPassword = ({ onClose, onSwitchToLogin }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-[95%] max-w-lg p-8 relative">
+      {/* Dimmed background */}
+      <div
+        className="absolute inset-0 bg-black opacity-50"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
+      <div className="relative bg-white rounded-lg shadow-xl w-[95%] max-w-lg p-8 z-10">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl"
         >
           ×
         </button>
-
-        {/* Logo */}
         <div className="flex justify-center mb-5">
           <img src={logo} alt="Logo" className="h-12" />
         </div>
-
         <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">
           Forgot Password
         </h2>
         <p className="text-center text-sm text-gray-600 mb-6">
           Enter your email to reset your password
         </p>
-
-        {/* Email Input */}
         <div className="relative mb-6 text-gray-700">
           <FaEnvelope className="absolute left-3 top-3.5 text-gray-400" />
           <input
@@ -74,8 +67,6 @@ const ForgotPassword = ({ onClose, onSwitchToLogin }) => {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-
-        {/* Submit Button */}
         <button
           onClick={handleSubmit}
           disabled={loading}
@@ -83,8 +74,6 @@ const ForgotPassword = ({ onClose, onSwitchToLogin }) => {
         >
           {loading ? "Sending..." : "Send Reset Link"}
         </button>
-
-        {/* Switch to Login */}
         <p className="text-center text-sm text-gray-600 mt-4">
           Remembered your password?{" "}
           <button

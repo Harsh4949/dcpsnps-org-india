@@ -1,123 +1,221 @@
-// Navbar Component — shows site navigation, user auth status, and login/logout actions
-
-import logo from '../assets/logo1.png';
+import logo from "../assets/logo1.png";
 import { useState, useEffect } from "react";
-import { auth, db } from '../firebase';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { ref, get } from 'firebase/database';
-import AuthModalManager from '../auth/ModalManager';
-import { FaUserCircle } from 'react-icons/fa';
+import { auth, db } from "../firebase";
+import { signOut, onAuthStateChanged } from "firebase/auth";
+import { ref, get } from "firebase/database";
+import AuthModalManager from "../auth/ModalManager";
+import { FaUserCircle } from "react-icons/fa";
+import { Link, useLocation } from "react-router-dom";
 
 export default function Navbar() {
- // State to control mobile menu open/close
   const [isOpen, setIsOpen] = useState(false);
- // State to show/hide authentication modal
   const [showAuthModal, setShowAuthModal] = useState(false);
-  // Logged-in Firebase Auth user object
-  const [user, setUser] = useState(null); 
-  // Username fetched from Realtime Database
-  const [username, setUsername] = useState("");
+  const [user, setUser] = useState(null);
+  const [photoURL, setPhotoURL] = useState(null);
+  const [profileDropdown, setProfileDropdown] = useState(false);
 
- /**
-   * useEffect → Listen for Firebase user authentication state changes.
-   * When the user logs in, fetch their username from the Realtime Database.
-   */
+  const location = useLocation();
+  const currentPath = location.pathname;
+
+  const isPostsPage = ["/post", "/create", "/saved", "/myposts"].includes(
+    currentPath
+  );
+  const isProfilePage = currentPath === "/profile";
+
+  // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-
-        // Fetch username from Realtime Database
-        const snapshot = await get(ref(db, 'users/' + currentUser.uid));
+        const snapshot = await get(ref(db, "users/" + currentUser.uid));
         if (snapshot.exists()) {
-          setUsername(snapshot.val().username || "");
+          const data = snapshot.val();
+          setPhotoURL(data.photoURL || currentUser.photoURL || null);
         }
       } else {
         setUser(null);
-        setUsername("");
+        setPhotoURL(null);
       }
     });
-
     return () => unsubscribe();
   }, []);
-  // Open Login/Auth modal
+
   const handleAuthOpen = () => setShowAuthModal(true);
-  // Close Login/Auth modal
   const handleAuthClose = () => setShowAuthModal(false);
-  // Logout user from Firebase
+
   const handleLogout = async () => {
     await signOut(auth);
     setUser(null);
-    setUsername("");
+    setPhotoURL(null);
+    setProfileDropdown(false);
+  };
+
+  /** Tailwind class generator for active links */
+  const navLink = (path) =>
+    `px-3 py-2 font-medium relative group ${
+      currentPath === path
+        ? "text-yellow-300 after:absolute after:left-0 after:-bottom-1 after:w-full after:h-[2px] after:bg-yellow-300"
+        : "text-gray-200 hover:text-yellow-300"
+    }`;
+
+  /** -------------------- NAV LINKS -------------------- */
+  const renderLinks = () => {
+    if (isPostsPage) {
+      return (
+        <>
+          <Link to="/" className={navLink("/")}>
+            Home
+          </Link>
+          <Link to="/post" className={navLink("/post")}>
+            Feed
+          </Link>
+          <Link to="/create" className={navLink("/create")}>
+            Create Post
+          </Link>
+          <Link to="/saved" className={navLink("/saved")}>
+            Saved Posts
+          </Link>
+          <Link to="/myposts" className={navLink("/myposts")}>
+            My Posts
+          </Link>
+        </>
+      );
+    }
+    if (isProfilePage) {
+      return (
+        <>
+          <Link to="/" className={navLink("/")}>
+            Home
+          </Link>
+          <Link to="/profile" className={navLink("/profile")}>
+            Profile
+          </Link>
+          <Link to="/myposts" className={navLink("/myposts")}>
+            My Posts
+          </Link>
+        </>
+      );
+    }
+    // Default = Home Section
+    return (
+      <>
+        <a
+          href="#Home"
+          className="text-gray-200 hover:text-yellow-300 px-3 py-2 font-medium"
+        >
+          Home
+        </a>
+        <a
+          href="#About"
+          className="text-gray-200 hover:text-yellow-300 px-3 py-2 font-medium"
+        >
+          About
+        </a>
+        <a
+          href="#Contact"
+          className="text-gray-200 hover:text-yellow-300 px-3 py-2 font-medium"
+        >
+          Contact
+        </a>
+        <Link to="/post" className={navLink("/post")}>
+          Posts
+        </Link>
+      </>
+    );
   };
 
   return (
     <>
-    {/* Navigation Bar */}
+      {/* Navbar */}
       <nav
         style={{ background: "var(--body-color)" }}
         className="shadow-md w-full fixed top-0 left-0 z-50"
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-3">
-
           {/* Logo */}
           <div className="flex items-center space-x-3">
             <img src={logo} alt="DCPS Logo" className="h-12" />
           </div>
 
-          {/* Hamburger Button */}
+          {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden text-white focus:outline-none"
           >
             {isOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-7 w-7"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="h-7 w-7"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             )}
           </button>
 
-          {/* Desktop Links */}
+          {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-10">
-            <a href="#Home" className="text-gray-200 font-medium px-3 py-2 relative group">
-              Home
-              <span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-            <a href="#About" className="text-gray-200 font-medium px-3 py-2 relative group">
-              About
-              <span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-            <a href="#Contact" className="text-gray-200 font-medium px-3 py-2 relative group">
-              Contact
-              <span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-            <a href="#Post" className="text-gray-200 font-medium px-3 py-2 relative group">
-              Posts
-              <span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-yellow-300 transition-all duration-300 group-hover:w-full"></span>
-            </a>
+            {renderLinks()}
 
-            {/* Auth Buttons */}
+            {/* Profile/Login Section */}
             {user ? (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-white">
-                  <FaUserCircle size={24} />
-                  <span>{username || "User"}</span>
-                </div>
+              <div className="relative">
                 <button
-                  onClick={handleLogout}
-                  className="bg-red-500 px-4 py-2 rounded text-white hover:bg-red-600"
+                  onClick={() => setProfileDropdown((prev) => !prev)}
+                  className="focus:outline-none"
                 >
-                  Logout
+                  {photoURL ? (
+                    <img
+                      src={photoURL}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                    />
+                  ) : (
+                    <FaUserCircle size={28} className="text-white" />
+                  )}
                 </button>
+                {profileDropdown && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg py-2 z-50">
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setProfileDropdown(false)}
+                    >
+                      My Profile
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button
                 onClick={handleAuthOpen}
-                className="bg-green-600 h-full items-center text-white font-medium rounded-md px-4 py-2 border-none shadow-sm ml-2"
+                className="bg-green-600 text-white font-medium rounded-md px-4 py-2"
               >
                 Login
               </button>
@@ -125,31 +223,63 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Dropdown */}
         {isOpen && (
-          <div className="md:hidden bg-green-600 bg-opacity-95 flex flex-col space-y-4 px-6 py-4">
-            <a href="#Home" className="text-white hover:text-yellow-300 transition" onClick={() => setIsOpen(false)}>Home</a>
-            <a href="#About" className="text-white hover:text-yellow-300 transition" onClick={() => setIsOpen(false)}>About</a>
-            <a href="#Contact" className="text-white hover:text-yellow-300 transition" onClick={() => setIsOpen(false)}>Contact</a>
-            <a href="#Post" className="text-white hover:text-yellow-300 transition" onClick={() => setIsOpen(false)}>Posts</a>
+          <div className="md:hidden bg-gray-800 flex flex-col space-y-4 px-6 py-4">
+            {/* Nav Links */}
+            {renderLinks()}
 
+            {/* Profile/Login Section (Mobile) */}
             {user ? (
-              <>
-                <div className="flex items-center space-x-2 text-white">
-                  <FaUserCircle size={20} />
-                  <span>{username || "User"}</span>
-                </div>
+              <div className="flex flex-col items-start ml-2.5">
+                {/* Profile Icon aligned left and vertically with nav links */}
                 <button
-                  onClick={() => { handleLogout(); setIsOpen(false); }}
-                  className="bg-red-500 px-4 py-2 rounded text-white hover:bg-red-600"
+                  onClick={() => setProfileDropdown((p) => !p)}
+                  className="flex items-center focus:outline-none mt-1"
                 >
-                  Logout
+                  {photoURL ? (
+                    <img
+                      src={photoURL}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                    />
+                  ) : (
+                    <FaUserCircle size={24} className="text-white" />
+                  )}
                 </button>
-              </>
+
+                {/* Dropdown appears below icon only when open */}
+                {profileDropdown && (
+                  <div className="mt-2 w-full bg-white rounded-lg shadow-lg py-2 z-50">
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => {
+                        setProfileDropdown(false);
+                        setIsOpen(false);
+                      }}
+                    >
+                      My Profile
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <button
-                onClick={() => { setIsOpen(false); handleAuthOpen(); }}
-                className="bg-green-700 text-white font-medium rounded-md px-4 py-2 border-none shadow-sm"
+                onClick={() => {
+                  setIsOpen(false);
+                  handleAuthOpen();
+                }}
+                className="bg-green-700 text-white font-medium rounded-md px-4 py-2"
               >
                 Login
               </button>
@@ -158,7 +288,7 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Auth Modal Manager */}
+      {/* Auth Modal */}
       {showAuthModal && <AuthModalManager onClose={handleAuthClose} />}
     </>
   );

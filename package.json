@@ -15,8 +15,12 @@
     "firebase": "^12.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-easy-crop": "^5.5.0",
+    "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
-    "react-router-dom": "^7.7.1",
+    "react-router-dom": "^7.8.0",
+    "react-toastify": "^11.0.5",
+    "state-district-component": "^1.0.3",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {

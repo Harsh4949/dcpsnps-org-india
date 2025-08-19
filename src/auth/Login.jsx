@@ -1,29 +1,20 @@
 import { useState } from "react";
 import logo from "../assets/logo1.png";
 import { FaEye, FaEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
-import { auth, db, googleProvider } from "../firebase"; // ✅ Import googleProvider
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, db, googleProvider } from "../firebase";
+import { signInWithEmailAndPassword, signInWithPopup, sendEmailVerification } from "firebase/auth";
 import { ref, get, set } from "firebase/database";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-/**
- * LoginModal Component
- * Props:
- *  - onClose: Close the login modal
- *  - onSwitchToRegister: Switch modal to registration view
- *  - onSwitchToForgot: Switch modal to forgot password view
- */
 const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
-  // Password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
-  // Controlled form inputs for email and password
   const [formData, setFormData] = useState({ email: "", password: "" });
-  // Loading state for disabling buttons during requests
   const [loading, setLoading] = useState(false);
+  const [unverifiedUser, setUnverifiedUser] = useState(null); // store unverified user
 
-  /** Toggle password visibility */
   const togglePasswordVisibility = () => setShowPassword((prev) => !prev);
 
-  /** Handle form field changes */
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -31,53 +22,55 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
     }));
   };
 
-  // Email/Password Login
+  // ✅ Email/Password Login
   const handleLogin = async () => {
-    if (!formData.email || !formData.password) {
-      alert("Please enter both email and password");
+  if (!formData.email || !formData.password) {
+    toast.error("⚠️ Please enter both email and password");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
+    const user = userCredential.user;
+
+    // ✅ Check if email is verified
+    if (!user.emailVerified) {
+      toast.warning("📧 Please verify your email before logging in.");
+      setUnverifiedUser(user); // store for resend
+      await auth.signOut(); // ❌ force logout
+      setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      // Sign in with Firebase email/password
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-      const user = userCredential.user;
+    // ✅ Fetch username from database
+    const userRef = ref(db, "users/" + user.uid);
+    const snapshot = await get(userRef);
 
-      // Fetch username from database if available
-      const userRef = ref(db, "users/" + user.uid);
-      const snapshot = await get(userRef);
-
-      if (snapshot.exists()) {
-        alert(`Welcome ${snapshot.val().username || "User"}!`);
-      } else {
-        alert("Welcome!");
-      }
-
-      // Close modal after successful login
-      onClose();
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setLoading(false);
+    if (snapshot.exists()) {
+      toast.success(`👋 Welcome ${snapshot.val().username || "User"}!`);
+    } else {
+      toast.success("👋 Welcome!");
     }
-  };
 
-  /**
-   * Google Sign-In Handler
-   * - Uses Firebase Popup Auth
-   * - Saves new user to database if not already registered
-   */
+    onClose(); // close modal
+  } catch (error) {
+    toast.error(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // ✅ Google Sign-In
   const handleGoogleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider); // ✅ Now using imported provider
+      const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
-      // Save user to Realtime Database if new
       const userRef = ref(db, "users/" + user.uid);
       const snapshot = await get(userRef);
       if (!snapshot.exists()) {
@@ -88,16 +81,34 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
         });
       }
 
-      alert(`Welcome ${user.displayName || "User"}!`);
+      toast.success(`👋 Welcome ${user.displayName || "User"}!`);
       onClose();
     } catch (error) {
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 
+  // ✅ Resend Verification Email
+const handleResendVerification = async () => {
+  if (!unverifiedUser) return;
+  try {
+    await sendEmailVerification(unverifiedUser);
+    toast.info("📨 Verification email resent. Please check your inbox.");
+  } catch (error) {
+    toast.error("❌ Failed to resend verification email: " + error.message);
+  }
+};
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-[95%] max-w-lg p-8 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Dimmed background */}
+      <div
+        className="absolute inset-0 bg-black opacity-50"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
+      {/* Modal content */}
+      <div className="relative bg-white rounded-lg shadow-xl w-[95%] max-w-lg p-8 z-10">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -208,6 +219,18 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+
+        {/* Resend Verification Button (only for unverified users) */}
+        {unverifiedUser && (
+          <div className="mt-3 text-center">
+            <button
+              onClick={handleResendVerification}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Resend Verification Email
+            </button>
+          </div>
+        )}
 
         {/* Switch to Register */}
         <p className="text-center text-sm text-gray-600 mt-4">
