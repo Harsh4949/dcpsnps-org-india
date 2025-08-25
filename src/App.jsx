@@ -46,7 +46,7 @@ function App() {
         <Route path="/profile" element={<Profile />} /> {/* User Profile */}
         <Route path="/myposts" element={<MyPosts />} />
       </Routes>
-     <ToastContainer position="top-right" autoClose={1500} />
+     <ToastContainer position="top-center" autoClose={3000} />
     </>
   );
 }

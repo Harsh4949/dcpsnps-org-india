@@ -900,11 +900,13 @@ const handleSubmit = async (e) => {
     // ✅ Send verification mail
     await sendEmailVerification(user);
 
+    
     // ✅ Save user details in DB
     await set(ref(db, "users/" + user.uid), {
       firstName: formData.firstName,
       middleName: formData.middleName,
       lastName: formData.lastName,
+      fullname: `${formData.firstName} ${formData.middleName ? formData.middleName + " " : ""}${formData.lastName}`,
       username: formData.username,
       gender: formData.gender,
       dob: formData.dob,

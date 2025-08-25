@@ -43,15 +43,25 @@ export default function Profile() {
     setNewValue(userData[field] || "");
   };
 
-  const handleSave = async (field) => {
-    if (!auth.currentUser) return;
-    await update(ref(db, "users/" + auth.currentUser.uid), {
-      [field]: newValue,
-    });
-    setUserData({ ...userData, [field]: newValue });
-    setEditField(null);
-    setNewValue("");
-  };
+const handleSave = async (field) => {
+  if (!auth.currentUser) return;
+
+  // If saving one of the name parts, compute a new fullName too
+  const nextUser = { ...userData, [field]: newValue };
+  const fullName = [nextUser.firstName, nextUser.middleName, nextUser.lastName]
+    .filter(Boolean)
+    .join(" ");
+
+  await update(ref(db, "users/" + auth.currentUser.uid), {
+    [field]: newValue,
+    fullName,
+  });
+
+  setUserData({ ...nextUser, fullName });
+  setEditField(null);
+  setNewValue("");
+};
+
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -91,10 +101,10 @@ export default function Profile() {
               type="text"
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
-              className="border p-1 rounded ml-2"
+              className="border p-1 rounded ml-2 text-gray-600"
             />
           ) : (
-            <span className="text-gray-500 ml-2">
+            <span className="text-gray-600 ml-2">
               {value || "Not set"}
             </span>
           )}
@@ -156,7 +166,7 @@ export default function Profile() {
               <span className="text-gray-700">Uploading...</span>
             </div>
           )}
-        </div>
+        </div>  
 
         {/* User Info */}
         <div className="space-y-4">
@@ -172,7 +182,7 @@ export default function Profile() {
           <div className="flex items-center border-b pb-2">
             <FaEnvelope className="text-gray-600 mr-2" /> {/* Mail icon */}
             <span className="font-medium text-gray-700">Email:</span>
-            <span className="ml-2 text-gray-500">
+            <span className="ml-2 text-gray-600">
               {auth.currentUser?.email}
             </span>
           </div>

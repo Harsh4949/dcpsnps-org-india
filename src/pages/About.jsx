@@ -1,4 +1,5 @@
 import aboutpng from '../assets/about2.png';
+import Chat from './Chat.jsx';
 
 export default function About() {
   return (
@@ -45,6 +46,7 @@ export default function About() {
           
         </div>
       </div>
+      <Chat />
     </section>
   );
 }
