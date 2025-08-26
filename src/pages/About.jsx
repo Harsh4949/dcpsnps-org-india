@@ -34,17 +34,7 @@ export default function About() {
          It is to be identified. It is hoped that this website will be useful in facilitating NPS procedures.
         </p>
 
-        {/* ✅ Buttons Container */}
-        <div className="mt-6 w-full max-w-xl flex gap-6">
-          <a
-            href="/about"
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 
-                       rounded-lg shadow-lg transform hover:scale-105 transition duration-300"
-          >
-            Know More
-          </a>
-          
-        </div>
+     
       </div>
       <Chat />
     </section>

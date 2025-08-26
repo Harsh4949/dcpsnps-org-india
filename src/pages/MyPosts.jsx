@@ -7,8 +7,13 @@ import {
   FaRegBookmark,
   FaBookmark,
   FaEdit,
-  FaTrash,
   FaUserCircle,
+  FaShareAlt,
+  FaWhatsapp,
+  FaFacebook,
+  FaInstagram,
+  FaTwitter,
+  FaLink,
 } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
@@ -27,6 +32,8 @@ export default function MyPosts() {
   const [newMediaFile, setNewMediaFile] = useState(null);
   const [commentInput, setCommentInput] = useState({});
   const [editingCommentId, setEditingCommentId] = useState(null);
+    const [openShareMenu, setOpenShareMenu] = useState(null);  
+  
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
@@ -281,27 +288,110 @@ export default function MyPosts() {
 
                 {/* Actions */}
                 <div className="flex items-center justify-between border-t pt-3">
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => toggleLike(post)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-red-500"
-                    >
-                      {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />} {likeCount}
-                    </button>
-                    <button
-                      onClick={() => toggleComments(post.id)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-blue-500"
-                    >
-                      <FaRegComment /> {post.comments ? Object.keys(post.comments).length : 0}
-                    </button>
-                  </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => toggleLike(post)}
+                    className="flex items-center gap-1 text-gray-600 hover:text-red-500"
+                  >
+                    {isLiked ? (
+                      <FaHeart className="text-red-500" />
+                    ) : (
+                      <FaRegHeart />
+                    )}{" "}
+                    {likeCount}
+                  </button>
+                  <button
+                    onClick={() => toggleComments(post.id)}
+                    className="flex items-center gap-1 text-gray-600 hover:text-blue-500"
+                  >
+                    <FaRegComment />{" "}
+                    {post.comments ? Object.keys(post.comments).length : 0}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {/* Save Button */}
                   <button
                     onClick={() => toggleSave(post)}
                     className="text-gray-600 hover:text-yellow-500"
                   >
-                    {isSaved ? <FaBookmark /> : <FaRegBookmark />}
+                    {post.saved && post.saved[auth.currentUser?.uid] ? (
+                      <FaBookmark />
+                    ) : (
+                      <FaRegBookmark />
+                    )}
                   </button>
+
+               
+                  {/* Share Menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        setOpenShareMenu(
+                          openShareMenu === post.id ? null : post.id
+                        )
+                      }
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      <FaShareAlt />
+                    </button>
+
+                    {openShareMenu === post.id && (
+                      <div
+                        className="absolute right-0 mt-2 w-52 bg-white border rounded-lg shadow-lg z-50 
+                 animate-fade-in"
+                      >
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(
+                            `${post.title} - ${window.location.origin}/post/${post.id}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-green-100 transition text-gray-400"
+                        >
+                          <FaWhatsapp className="text-green-700" /> WhatsApp
+                        </a>
+
+                        <a
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                            `${window.location.origin}/post/${post.id}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-blue-100 transition  text-gray-400"
+                        >
+                          <FaFacebook className="text-blue-600" /> Facebook
+                        </a>
+
+                        <a
+                          href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(
+                            `${window.location.origin}/post/${post.id}`
+                          )}&text=${encodeURIComponent(post.title)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-cyan-100 transition  text-gray-400"
+                        >
+                          <FaTwitter className="text-sky-500" /> X (Twitter)
+                        </a>
+
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              `${window.location.origin}/post/${post.id}`
+                            );
+                            toast.success("📋 Link copied to clipboard!");
+                            setOpenShareMenu(null); // close after copy
+                          }}
+                          className="flex items-center gap-2 w-full p-2 hover:bg-gray-100 transition  text-gray-400"
+                        >
+                          <FaLink className="text-gray-600" /> Copy Link
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              </div>
+
 
                 {/* Edit/Delete for Owner */}
                 {user.uid === post.userId && editingPostId !== post.id && (

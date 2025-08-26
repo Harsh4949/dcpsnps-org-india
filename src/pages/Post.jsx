@@ -8,6 +8,12 @@ import {
   FaBookmark,
   FaEdit,
   FaUserCircle,
+  FaShareAlt,
+  FaWhatsapp,
+  FaFacebook,
+  FaInstagram,
+  FaTwitter,
+  FaLink,
 } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
@@ -25,6 +31,7 @@ export default function Post() {
   const [editContent, setEditContent] = useState("");
   const [newMediaFile, setNewMediaFile] = useState(null);
   const [editingCommentId, setEditingCommentId] = useState(null);
+  const [openShareMenu, setOpenShareMenu] = useState(null);
 
   // Listen for auth state
   useEffect(() => {
@@ -97,7 +104,10 @@ export default function Post() {
     };
 
     if (editingCommentId) {
-      await update(ref(db, `posts/${postId}/comments/${editingCommentId}`), commentData);
+      await update(
+        ref(db, `posts/${postId}/comments/${editingCommentId}`),
+        commentData
+      );
       toast.success("✏️ Comment updated!");
     } else {
       await push(ref(db, `posts/${postId}/comments`), commentData);
@@ -162,17 +172,24 @@ export default function Post() {
   }
 
   return (
-    <div style={{ background: "var(--body-color)" }} className="min-h-screen pt-24 px-4">
+    <div
+      style={{ background: "var(--body-color)" }}
+      className="min-h-screen pt-24 px-4"
+    >
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-yellow-300">Community Feed</h1>
-          <p className="text-white">Share ideas, feedback, and engage in meaningful discussions.</p>
+          <p className="text-white">
+            Share ideas, feedback, and engage in meaningful discussions.
+          </p>
         </div>
 
         {/* Posts */}
         {posts.length === 0 && (
-          <p className="text-center text-gray-900 font-semibold">No posts yet. Be the first to share!</p>
+          <p className="text-center text-gray-900 font-semibold">
+            No posts yet. Be the first to share!
+          </p>
         )}
 
         {posts.map((post) => {
@@ -180,7 +197,10 @@ export default function Post() {
           const isLiked = post.likes && auth.currentUser.uid in post.likes;
 
           return (
-            <div key={post.id} className="bg-gray-100 rounded-lg shadow-md p-6 mb-6">
+            <div
+              key={post.id}
+              className="bg-gray-100 rounded-lg shadow-md p-6 mb-6"
+            >
               {/* Post Header */}
               <div className="flex items-center gap-3 mb-4">
                 {post.photoURL ? (
@@ -193,9 +213,13 @@ export default function Post() {
                   <FaUserCircle className="w-10 h-10 text-gray-400" />
                 )}
                 <div>
-                  <p className="font-semibold text-gray-500">{post.username || "Anonymous"}</p>
+                  <p className="font-semibold text-gray-500">
+                    {post.username || "Anonymous"}
+                  </p>
                   <p className="text-sm text-gray-500">
-                    {post.createdAt ? new Date(post.createdAt).toLocaleString() : "Just now"}
+                    {post.createdAt
+                      ? new Date(post.createdAt).toLocaleString()
+                      : "Just now"}
                   </p>
                 </div>
               </div>
@@ -215,7 +239,9 @@ export default function Post() {
                     className="w-full border rounded-lg p-2 text-sm text-gray-400"
                   />
                   {newMediaFile ? (
-                    <p className="text-sm text-gray-500">New file selected: {newMediaFile.name}</p>
+                    <p className="text-sm text-gray-500">
+                      New file selected: {newMediaFile.name}
+                    </p>
                   ) : (
                     post.mediaURL && (
                       <div className="relative">
@@ -234,7 +260,11 @@ export default function Post() {
                         )}
                         <label className="absolute top-2 right-2 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white">
                           <FaEdit />
-                          <input type="file" className="hidden" onChange={handleNewMedia} />
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={handleNewMedia}
+                          />
                         </label>
                       </div>
                     )
@@ -254,10 +284,14 @@ export default function Post() {
                 </div>
               ) : (
                 <>
-                  <h2 className="font-bold text-lg text-gray-800">{post.title}</h2>
+                  <h2 className="font-bold text-lg text-gray-800">
+                    {post.title}
+                  </h2>
                   <p className="text-gray-800 mb-4">
                     {post.content}{" "}
-                    {post.edited && <span className="text-xs text-gray-500">(edited)</span>}
+                    {post.edited && (
+                      <span className="text-xs text-gray-500">(edited)</span>
+                    )}
                   </p>
                   {post.mediaURL && (
                     <div className="mb-4">
@@ -280,47 +314,134 @@ export default function Post() {
               )}
 
               {/* Actions */}
+
               <div className="flex items-center justify-between border-t pt-3">
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => toggleLike(post)}
                     className="flex items-center gap-1 text-gray-600 hover:text-red-500"
                   >
-                    {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />} {likeCount}
+                    {isLiked ? (
+                      <FaHeart className="text-red-500" />
+                    ) : (
+                      <FaRegHeart />
+                    )}{" "}
+                    {likeCount}
                   </button>
                   <button
                     onClick={() => toggleComments(post.id)}
                     className="flex items-center gap-1 text-gray-600 hover:text-blue-500"
                   >
-                    <FaRegComment /> {post.comments ? Object.keys(post.comments).length : 0}
+                    <FaRegComment />{" "}
+                    {post.comments ? Object.keys(post.comments).length : 0}
                   </button>
                 </div>
-                <button
-                  onClick={() => toggleSave(post)}
-                  className="text-gray-600 hover:text-yellow-500"
-                >
-                  {post.saved && post.saved[auth.currentUser?.uid] ? <FaBookmark /> : <FaRegBookmark />}
-                </button>
+
+                <div className="flex items-center gap-4">
+                  {/* Save Button */}
+                  <button
+                    onClick={() => toggleSave(post)}
+                    className="text-gray-600 hover:text-yellow-500"
+                  >
+                    {post.saved && post.saved[auth.currentUser?.uid] ? (
+                      <FaBookmark />
+                    ) : (
+                      <FaRegBookmark />
+                    )}
+                  </button>
+
+               
+                  {/* Share Menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        setOpenShareMenu(
+                          openShareMenu === post.id ? null : post.id
+                        )
+                      }
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      <FaShareAlt />
+                    </button>
+
+                    {openShareMenu === post.id && (
+                      <div
+                        className="absolute right-0 mt-2 w-52 bg-white border rounded-lg shadow-lg z-50 
+                 animate-fade-in"
+                      >
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(
+                            `${post.title} - ${window.location.origin}/post/${post.id}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-green-100 transition text-gray-400"
+                        >
+                          <FaWhatsapp className="text-green-700" /> WhatsApp
+                        </a>
+
+                        <a
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                            `${window.location.origin}/post/${post.id}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-blue-100 transition  text-gray-400"
+                        >
+                          <FaFacebook className="text-blue-600" /> Facebook
+                        </a>
+
+                        <a
+                          href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(
+                            `${window.location.origin}/post/${post.id}`
+                          )}&text=${encodeURIComponent(post.title)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-cyan-100 transition  text-gray-400"
+                        >
+                          <FaTwitter className="text-sky-500" /> X (Twitter)
+                        </a>
+
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              `${window.location.origin}/post/${post.id}`
+                            );
+                            toast.success("📋 Link copied to clipboard!");
+                            setOpenShareMenu(null); // close after copy
+                          }}
+                          className="flex items-center gap-2 w-full p-2 hover:bg-gray-100 transition  text-gray-400"
+                        >
+                          <FaLink className="text-gray-600" /> Copy Link
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Edit/Delete for Owner */}
-              {auth.currentUser?.uid === post.userId && editingPostId !== post.id && (
-                <div className="flex gap-3 mt-2 text-sm text-gray-600">
-                  <button
-                    onClick={() => {
-                      setEditingPostId(post.id);
-                      setEditTitle(post.title);
-                      setEditContent(post.content);
-                    }}
-                    className="text-blue-600"
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => deletePost(post)} className="text-red-600">
-                    Delete
-                  </button>
-                </div>
-              )}
+              {auth.currentUser?.uid === post.userId &&
+                editingPostId !== post.id && (
+                  <div className="flex gap-3 mt-2 text-sm text-gray-600">
+                    <button
+                      onClick={() => {
+                        setEditingPostId(post.id);
+                        setEditTitle(post.title);
+                        setEditContent(post.content);
+                      }}
+                      className="text-blue-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deletePost(post)}
+                      className="text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
 
               {/* Comments */}
               {post.showComments && (
@@ -331,7 +452,10 @@ export default function Post() {
                       const isEditing = editingCommentId === cid;
 
                       return (
-                        <div key={cid} className="bg-gray-200 p-3 rounded-lg flex gap-2">
+                        <div
+                          key={cid}
+                          className="bg-gray-200 p-3 rounded-lg flex gap-2"
+                        >
                           {c.photoURL ? (
                             <img
                               src={c.photoURL}
@@ -342,13 +466,18 @@ export default function Post() {
                             <FaUserCircle className="w-8 h-8 text-gray-400" />
                           )}
                           <div className="flex-1">
-                            <p className="font-semibold text-sm text-gray-400">{c.username}</p>
+                            <p className="font-semibold text-sm text-gray-400">
+                              {c.username}
+                            </p>
                             {isEditing ? (
                               <input
                                 type="text"
                                 value={commentInput[post.id] || ""}
                                 onChange={(e) =>
-                                  setCommentInput({ ...commentInput, [post.id]: e.target.value })
+                                  setCommentInput({
+                                    ...commentInput,
+                                    [post.id]: e.target.value,
+                                  })
                                 }
                                 className="w-full border rounded-lg p-2 text-sm text-gray-400"
                               />
@@ -356,7 +485,9 @@ export default function Post() {
                               <p className="text-gray-700 text-sm">
                                 {c.text}{" "}
                                 {c.edited && (
-                                  <span className="text-xs text-gray-500">(edited)</span>
+                                  <span className="text-xs text-gray-500">
+                                    (edited)
+                                  </span>
                                 )}
                               </p>
                             )}
@@ -390,7 +521,10 @@ export default function Post() {
                                     className="text-blue-600"
                                     onClick={() => {
                                       setEditingCommentId(cid);
-                                      setCommentInput({ ...commentInput, [post.id]: c.text });
+                                      setCommentInput({
+                                        ...commentInput,
+                                        [post.id]: c.text,
+                                      });
                                     }}
                                   >
                                     Edit
@@ -398,7 +532,12 @@ export default function Post() {
                                   <button
                                     className="text-red-600"
                                     onClick={() =>
-                                      remove(ref(db, `posts/${post.id}/comments/${cid}`))
+                                      remove(
+                                        ref(
+                                          db,
+                                          `posts/${post.id}/comments/${cid}`
+                                        )
+                                      )
                                     }
                                   >
                                     Delete
@@ -421,7 +560,10 @@ export default function Post() {
                     placeholder="Add a comment..."
                     value={commentInput[post.id] || ""}
                     onChange={(e) =>
-                      setCommentInput({ ...commentInput, [post.id]: e.target.value })
+                      setCommentInput({
+                        ...commentInput,
+                        [post.id]: e.target.value,
+                      })
                     }
                     className="flex-1 border rounded-lg p-2 text-sm text-gray-500"
                   />
