@@ -102,13 +102,15 @@ export default function SavedPost() {
     setEditingCommentId(null);
   };
 
-  // Toggle comment visibility
-  const handleToggleComments = (postId) => {
-    setShowComments((prev) => ({
-      ...prev,
-      [postId]: !prev[postId],
-    }));
-  };
+ 
+// Toggle comments visibility
+// Toggle comments visibility
+const toggleComments = (postId) => {
+  setShowComments((prev) => ({
+    ...prev,
+    [postId]: !prev[postId],
+  }));
+};
 
   // UI
   if (!user) {
@@ -157,7 +159,7 @@ export default function SavedPost() {
                     {post.createdAt ? new Date(post.createdAt).toLocaleString() : "Just now"}
                   </p>
                 </div>
-              </div>
+              </div><hr></hr>
 
               {/* Content */}
               <h2 className="font-bold text-lg text-gray-800">{post.title}</h2>

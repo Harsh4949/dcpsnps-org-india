@@ -1,6 +1,6 @@
 // src/pages/Profile.jsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Add this import
+import { useNavigate } from "react-router-dom"; 
 import { auth, db, storage } from "../firebase";
 import { ref, get, update } from "firebase/database";
 import { getDownloadURL, ref as sRef, uploadBytes } from "firebase/storage";

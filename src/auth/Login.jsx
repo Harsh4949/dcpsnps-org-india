@@ -59,7 +59,7 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
 
     onClose(); // close modal
   } catch (error) {
-    toast.error(error.message);
+    toast.error("⚠️Invalid Credentials");
   } finally {
     setLoading(false);
   }
@@ -95,7 +95,7 @@ const handleResendVerification = async () => {
     await sendEmailVerification(unverifiedUser);
     toast.info("📨 Verification email resent. Please check your inbox.");
   } catch (error) {
-    toast.error("❌ Failed to resend verification email: " + error.message);
+    toast.error("❌ Failed to resend verification email...Try After some Time");
   }
 };
 

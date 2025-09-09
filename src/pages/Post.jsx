@@ -19,7 +19,7 @@ import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { auth, db, storage } from "../firebase";
-import { ref, onValue, update, remove, push, set } from "firebase/database";
+import { ref, onValue, update, remove, push, set, get } from "firebase/database";
 import { ref as sRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function Post() {
@@ -28,16 +28,39 @@ export default function Post() {
   const [commentInput, setCommentInput] = useState({});
   const [editingPostId, setEditingPostId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
+  const [editContent, setEditContent] = useState(""); 
   const [newMediaFile, setNewMediaFile] = useState(null);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [openShareMenu, setOpenShareMenu] = useState(null);
+  
 
   // Listen for auth state
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
-    return () => unsubscribe();
-  }, []);
+useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged(async (u) => {
+    if (!u) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      const snap = await get(ref(db, "users/" + u.uid));
+      if (snap.exists()) {
+        setUser({
+          ...u,
+          username: snap.val().username,  // ✅ attach DB username
+          photoURL: u.photoURL || "",
+        });
+      } else {
+        setUser({ ...u, username: u.displayName || "Anonymous" });
+      }
+    } catch (err) {
+      console.error("Failed to fetch user profile:", err);
+      setUser({ ...u, username: u.displayName || "Anonymous" });
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
 
   // Fetch posts
   useEffect(() => {
@@ -50,7 +73,9 @@ export default function Post() {
           id: key,
           ...data[key],
         }));
-        setPosts(loaded.reverse());
+        loaded.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        setPosts(loaded);
       } else {
         setPosts([]);
       }
@@ -96,7 +121,7 @@ export default function Post() {
     if (!commentInput[postId]?.trim()) return;
     const commentData = {
       userId: auth.currentUser.uid,
-      username: auth.currentUser.displayName || "Anonymous",
+      username: user?.username || "Anonymous",
       photoURL: auth.currentUser.photoURL || null,
       text: commentInput[postId],
       time: Date.now(),
@@ -202,7 +227,7 @@ export default function Post() {
               className="bg-gray-100 rounded-lg shadow-md p-6 mb-6"
             >
               {/* Post Header */}
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4 ">
                 {post.photoURL ? (
                   <img
                     src={post.photoURL}
@@ -214,7 +239,7 @@ export default function Post() {
                 )}
                 <div>
                   <p className="font-semibold text-gray-500">
-                    {post.username || "Anonymous"}
+                    {post.username || "Unknown"}
                   </p>
                   <p className="text-sm text-gray-500">
                     {post.createdAt
@@ -222,7 +247,7 @@ export default function Post() {
                       : "Just now"}
                   </p>
                 </div>
-              </div>
+              </div><hr></hr>
 
               {/* Editable Content */}
               {editingPostId === post.id ? (

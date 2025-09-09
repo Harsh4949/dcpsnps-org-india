@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { auth, db } from "../firebase";
-import { ref, push, onValue, update, remove, serverTimestamp } from "firebase/database";
+import { ref, push, onValue, update, remove, serverTimestamp, get } from "firebase/database";
 import {
   FaComments,
   FaPaperPlane,
@@ -32,48 +32,75 @@ export default function Chat() {
   const [replyTo, setReplyTo] = useState(null); // {id,text,userId,username,photoURL}
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
+  
 
-  // auth listener
-  useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => setUser(u));
-    return () => unsub();
-  }, []);
 
-  // fetch messages
-  useEffect(() => {
-    const chatsRef = ref(db, "chats");
-    const unsub = onValue(chatsRef, (snap) => {
-      const val = snap.val();
-      if (!val) return setMessages([]);
-      const arr = Object.keys(val).map((id) => ({ id, ...val[id] }));
-      arr.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-      setMessages(arr);
-    });
-    return () => unsub();
-  }, []);
+// auth listener
+useEffect(() => {
+  const unsub = auth.onAuthStateChanged(async (u) => {
+    if (!u) {
+      setUser(null);
+      return;
+    }
 
-  const sendMessage = async () => {
-    if (!user || !input.trim()) return;
-    await push(ref(db, "chats"), {
-      text: input.trim(),
-      userId: user.uid,
-      username: user.displayName || "Anonymous",
-      photoURL: user.photoURL || "",
-      createdAt: serverTimestamp(),
-      reactions: {},
-      replyTo: replyTo
-        ? {
-            id: replyTo.id,
-            text: replyTo.text,
-            userId: replyTo.userId,
-            username: replyTo.username || "User",
-            photoURL: replyTo.photoURL || "",
-          }
-        : null,
-    });
-    setInput("");
-    setReplyTo(null);
-  };
+    try {
+      // 🔹 Fetch username from Realtime Database
+      const snap = await get(ref(db, "users/" + u.uid));
+      if (snap.exists()) {
+        setUser({
+          ...u,
+          username: snap.val().username,   // ✅ attach custom username
+          photoURL: u.photoURL || "",
+        });
+      } else {
+        setUser({ ...u, username: u.displayName || "Anonymous" });
+      }
+    } catch (err) {
+      console.error("Failed to fetch user profile:", err);
+      setUser({ ...u, username: u.displayName || "Anonymous" });
+    }
+  });
+
+  return () => unsub();
+}, []);
+
+// fetch messages
+useEffect(() => {
+  const chatsRef = ref(db, "chats");
+  const unsub = onValue(chatsRef, (snap) => {
+    const val = snap.val();
+    if (!val) return setMessages([]);
+    const arr = Object.keys(val).map((id) => ({ id, ...val[id] }));
+    arr.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    setMessages(arr);
+  });
+  return () => unsub();
+}, []);
+
+// send message
+const sendMessage = async () => {
+  if (!user || !input.trim()) return;
+  await push(ref(db, "chats"), {
+    text: input.trim(),
+    userId: user.uid,
+    username: user.username || "Anonymous",   // ✅ now using DB username
+    photoURL: user.photoURL || "",
+    createdAt: serverTimestamp(),
+    reactions: {},
+    replyTo: replyTo
+      ? {
+          id: replyTo.id,
+          text: replyTo.text,
+          userId: replyTo.userId,
+          username: replyTo.username || "User",
+          photoURL: replyTo.photoURL || "",
+        }
+      : null,
+  });
+  setInput("");
+  setReplyTo(null);
+};
+
 
   const deleteMessage = async (m) => {
     if (user?.uid !== m.userId) return;

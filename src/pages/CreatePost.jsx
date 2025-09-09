@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiImage, FiVideo, FiX } from "react-icons/fi";
 import { auth, db, storage } from "../firebase";
-import { ref, push, serverTimestamp } from "firebase/database";
+import { ref, push, serverTimestamp,get } from "firebase/database";
 import { ref as sRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -18,11 +18,36 @@ export default function Create() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Listen for auth state changes
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
-    return () => unsubscribe();
-  }, []);
+
+
+
+useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged(async (u) => {
+    if (!u) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      const snap = await get(ref(db, "users/" + u.uid));
+      if (snap.exists()) {
+        setUser({
+          ...u,
+          username: snap.val().username,   // ✅ store DB username
+          photoURL: snap.val().photoURL || "/default-avatar.png",
+        });
+      } else {
+        setUser({ ...u, username: u.displayName || "Anonymous" });
+      }
+    } catch (err) {
+      console.error("Failed to fetch user profile:", err);
+      setUser({ ...u, username: u.displayName || "Anonymous" });
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
+
 
   // Word limit helper
   const limitWords = (text, limit) => {
@@ -81,7 +106,7 @@ export default function Create() {
         mediaURL,
         mediaType,
         userId: user.uid,
-        username: user.displayName || "Anonymous",
+        username: user.username || "Anonymous",
         photoURL: user.photoURL || "/default-avatar.png",
         createdAt: serverTimestamp(),
       });

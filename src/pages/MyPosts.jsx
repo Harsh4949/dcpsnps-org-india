@@ -205,7 +205,7 @@ export default function MyPosts() {
                       {post.createdAt ? new Date(post.createdAt).toLocaleString() : "Just now"}
                     </p>
                   </div>
-                </div>
+                </div><hr></hr>
 
                 {/* Editable Content */}
                 {editingPostId === post.id ? (
@@ -338,7 +338,7 @@ export default function MyPosts() {
 
                     {openShareMenu === post.id && (
                       <div
-                        className="absolute right-0 mt-2 w-52 bg-white border rounded-lg shadow-lg z-50 
+                        className="absolute right-4 mt-2 w-40 bg-white border rounded-lg shadow-lg z-50 
                  animate-fade-in"
                       >
                         <a
