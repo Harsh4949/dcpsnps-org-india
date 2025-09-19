@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import logo from "../assets/logo1.png";
+import emailjs from "emailjs-com";
+
 import {
   FaEye,
   FaEyeSlash,
@@ -11,14 +13,18 @@ import {
   FaVenusMars,
 } from "react-icons/fa";
 import { auth, db } from "../firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signOut,
+} from "firebase/auth";
 import { ref, set, get } from "firebase/database";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // ✅ Hardcoded States & Districts
 const statesWithDistricts = {
-    Maharashtra: [
+  Maharashtra: [
     "Ahmednagar",
     "Akola",
     "Amravati",
@@ -828,6 +834,10 @@ const Register = ({ onClose, onSwitchToLogin }) => {
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState("");
 
+  const [showOtpPopup, setShowOtpPopup] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [enteredOtp, setEnteredOtp] = useState("");
+
   // ✅ Auto check username availability
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -850,8 +860,7 @@ const Register = ({ onClose, onSwitchToLogin }) => {
 
     const weakRegex = /^.{1,7}$/;
     const mediumRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    const strongRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
     if (weakRegex.test(pwd)) setPasswordStrength("Weak");
     else if (mediumRegex.test(pwd)) setPasswordStrength("Medium");
@@ -873,71 +882,87 @@ const Register = ({ onClose, onSwitchToLogin }) => {
     });
   };
 
- 
-// ✅ Submit
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  // ✅ Submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!isPasswordValid(formData.password)) {
-    return toast.error(
-      "Password must be 8+ chars, include uppercase, lowercase, number & symbol."
-    );
-  }
-  if (formData.password !== formData.confirmPassword) {
-    return toast.error("Passwords do not match!");
-  }
-
-  setLoading(true);
-  try {
-    // ✅ Create user
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      formData.email,
-      formData.password
-    );
-    const user = userCredential.user;
-
-    // ✅ Send verification mail
-    await sendEmailVerification(user);
-
-    
-    // ✅ Save user details in DB
-    await set(ref(db, "users/" + user.uid), {
-      firstName: formData.firstName,
-      middleName: formData.middleName,
-      lastName: formData.lastName,
-      fullname: `${formData.firstName} ${formData.middleName ? formData.middleName + " " : ""}${formData.lastName}`,
-      username: formData.username,
-      gender: formData.gender,
-      dob: formData.dob,
-      state: formData.state,
-      district: formData.district,
-      email: formData.email,
-      phone: formData.phone,
-      createdAt: new Date().toISOString(),
-    });
-
-    // ✅ Immediately log out after registration
-    await signOut(auth);
-
-    // ✅ Success Toast (shows immediately)
-    toast.success("🎉 Successfully Registered! Please verify your email.");
-
-    // Switch to login page
-    onSwitchToLogin();
-
-  } catch (error) {
-    if (error.code === "auth/email-already-in-use") {
-      toast.error("❌ This email is already registered.");
-    } else {
-      toast.error(error.message);
+    if (!isPasswordValid(formData.password)) {
+      return toast.error(
+        "Password must be 8+ chars, include uppercase, lowercase, number & symbol."
+      );
     }
-  } finally {
-    setLoading(false);
-  }
-};
+    if (formData.password !== formData.confirmPassword) {
+      return toast.error("Passwords do not match!");
+    }
 
+    setLoading(true);
+    try {
+      // ✅ Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(otp);
 
+      // ✅ Send OTP via EmailJS
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID, // your EmailJS service ID
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID, // your EmailJS template ID
+        {
+          email: formData.email, // matches {{email}}
+          passcode: otp, // matches {{passcode}}
+          time: new Date(Date.now() + 15 * 60000).toLocaleTimeString(), // matches {{time}}
+        },
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY // your EmailJS public key
+      );
+
+      toast.success("OTP sent to your email!");
+      setShowOtpPopup(true); // Show popup
+    } catch (error) {
+      toast.error("Failed to send OTP.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ✅ OTP Verification & Registration
+  const handleVerifyOtp = async () => {
+    if (enteredOtp === generatedOtp) {
+      try {
+        // Create Firebase user
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
+        const user = userCredential.user;
+
+        // Save to Realtime DB
+        await set(ref(db, "users/" + user.uid), {
+          firstName: formData.firstName,
+          middleName: formData.middleName,
+          lastName: formData.lastName,
+          fullname: `${formData.firstName} ${
+            formData.middleName ? formData.middleName + " " : ""
+          }${formData.lastName}`,
+          username: formData.username,
+          gender: formData.gender,
+          dob: formData.dob,
+          state: formData.state,
+          district: formData.district,
+          email: formData.email,
+          phone: formData.phone,
+          createdAt: new Date().toISOString(),
+        });
+
+        await signOut(auth);
+        toast.success("🎉 Registered Successfully!");
+        setShowOtpPopup(false);
+        onSwitchToLogin();
+      } catch (err) {
+        toast.error(err.message);
+      }
+    } else {
+      toast.error("❌ Invalid OTP. Try again.");
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 px-2">
@@ -1031,7 +1056,10 @@ const handleSubmit = async (e) => {
             </label>
             <div className="flex items-center gap-4 ">
               {["Male", "Female", "Other"].map((g) => (
-                <label key={g} className="flex items-center gap-2 text-gray-600">
+                <label
+                  key={g}
+                  className="flex items-center gap-2 text-gray-600"
+                >
                   <input
                     type="radio"
                     name="gender"
@@ -1064,7 +1092,11 @@ const handleSubmit = async (e) => {
               name="state"
               value={formData.state}
               onChange={(e) =>
-                setFormData({ ...formData, state: e.target.value, district: "" })
+                setFormData({
+                  ...formData,
+                  state: e.target.value,
+                  district: "",
+                })
               }
               required
               className="border rounded p-2"
@@ -1197,6 +1229,28 @@ const handleSubmit = async (e) => {
           </button>
         </p>
       </div>
+
+      {/* OTP Verification Popup */}
+      {showOtpPopup && (
+        <div className="fixed inset-0 flex items-center justify-center   z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-80">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">Verify Email</h3>
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={enteredOtp}
+              onChange={(e) => setEnteredOtp(e.target.value)}
+              className="border p-2 w-full mb-3 text-gray-900"
+            />
+            <button
+              onClick={handleVerifyOtp}
+              className="bg-orange-500 text-white w-full py-2 rounded hover:bg-orange-600"
+            >
+              Verify & Register
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

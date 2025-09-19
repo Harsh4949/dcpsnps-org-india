@@ -15,8 +15,11 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "./pages/Profile";
 import MyPosts from './pages/MyPosts.jsx';
+import emailjs from "emailjs-com";
 
 import "./App.css";
+// ✅ Initialize EmailJS globally
+emailjs.init("u8itjQTl3n-K0a0Nh");
 
 function App() {
   return (

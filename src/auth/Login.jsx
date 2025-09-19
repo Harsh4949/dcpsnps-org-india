@@ -38,14 +38,7 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
     );
     const user = userCredential.user;
 
-    // ✅ Check if email is verified
-    if (!user.emailVerified) {
-      toast.warning("📧 Please verify your email before logging in.");
-      setUnverifiedUser(user); // store for resend
-      await auth.signOut(); // ❌ force logout
-      setLoading(false);
-      return;
-    }
+    
 
     // ✅ Fetch username from database
     const userRef = ref(db, "users/" + user.uid);
