@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import logo from "../assets/logo1.png";
-import emailjs from "emailjs-com";
 import { fetchSignInMethodsForEmail } from "firebase/auth";
-
 
 
 import {
@@ -18,15 +16,12 @@ import {
 import { auth, db } from "../firebase";
 import {
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   signOut,
 } from "firebase/auth";
 import { ref, set, get } from "firebase/database";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import statesWithDistricts from "../components/StatesWithDistricts.jsx";
-
-
 
 
 const Register = ({ onClose, onSwitchToLogin }) => {
@@ -51,11 +46,6 @@ const Register = ({ onClose, onSwitchToLogin }) => {
   const [loading, setLoading] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState("");
-
-  const [showOtpPopup, setShowOtpPopup] = useState(false);
-  const [generatedOtp, setGeneratedOtp] = useState("");
-  const [enteredOtp, setEnteredOtp] = useState("");
-
   // ✅ Auto check username availability
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -104,94 +94,69 @@ const Register = ({ onClose, onSwitchToLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (formData.password !== formData.confirmPassword) {
+      return toast.error("Passwords do not match!");
+    }
+
     if (!isPasswordValid(formData.password)) {
       return toast.error(
         "Password must be 8+ chars, include uppercase, lowercase, number & symbol."
       );
     }
-    if (formData.password !== formData.confirmPassword) {
-      return toast.error("Passwords do not match!");
-    }
 
     setLoading(true);
 
     try {
-      // 🚨 Double check email before OTP
-       const methods = await fetchSignInMethodsForEmail(auth, formData.email);
-    const emailExists = methods.length > 0;
+      // Check if email already exists
+      const methods = await fetchSignInMethodsForEmail(auth, formData.email);
+      if (methods.length > 0) {
+        toast.warning("⚠️ Email already exists. Please login instead.");
+        setLoading(false);
+        return;
+      }
 
-    if (emailExists) {
-      toast.warning("⚠️ Email already exists. Please login instead.");
-      setLoading(false);
-      return; // ⛔ STOP – no OTP will be sent
-    }
-
-      // ✅ Generate 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(otp);
-
-      // ✅ Send OTP
-      await emailjs.send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-        {
-          email: formData.email,
-          passcode: otp,
-          time: new Date(Date.now() + 15 * 60000).toLocaleTimeString(),
-        },
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      // Create Firebase user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
       );
+      const user = userCredential.user;
 
-      toast.success("OTP sent to your email!");
-      setShowOtpPopup(true);
-    } catch (error) {
-      setLoading(false);
-      toast.error("Failed to send OTP.");
-      console.error(error);
+      // Save to Realtime DB
+      await set(ref(db, "users/" + user.uid), {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        fullname: `${formData.firstName} ${
+          formData.middleName ? formData.middleName + " " : ""
+        }${formData.lastName}`,
+        username: formData.username,
+        gender: formData.gender,
+        dob: formData.dob,
+        state: formData.state,
+        district: formData.district,
+        email: formData.email,
+        phone: formData.phone,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Sign out the user immediately after registration
+      await signOut(auth);
+
+      toast.success("🎉 Registered Successfully! Please login.");
+      onSwitchToLogin();
+    } catch (err) {
+      if (err.code === "auth/email-already-in-use") {
+        toast.error(
+          "This email address is already in use. Please try a different email or login."
+        );
+      } else {
+        toast.error(err.message || "Registration failed. Please try again.");
+      }
+      console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // ✅ OTP Verification & Registration
-  const handleVerifyOtp = async () => {
-    if (enteredOtp === generatedOtp) {
-      try {
-        // Create Firebase user
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        );
-        const user = userCredential.user;
-
-        // Save to Realtime DB
-        await set(ref(db, "users/" + user.uid), {
-          firstName: formData.firstName,
-          middleName: formData.middleName,
-          lastName: formData.lastName,
-          fullname: `${formData.firstName} ${
-            formData.middleName ? formData.middleName + " " : ""
-          }${formData.lastName}`,
-          username: formData.username,
-          gender: formData.gender,
-          dob: formData.dob,
-          state: formData.state,
-          district: formData.district,
-          email: formData.email,
-          phone: formData.phone,
-          createdAt: new Date().toISOString(),
-        });
-
-        await signOut(auth);
-        toast.success("🎉 Registered Successfully!");
-        setShowOtpPopup(false);
-        onSwitchToLogin();
-      } catch (err) {
-        toast.error(err.message);
-      }
-    } else {
-      toast.error("❌ Invalid OTP. Try again.");
     }
   };
 
@@ -460,30 +425,6 @@ const Register = ({ onClose, onSwitchToLogin }) => {
           </button>
         </p>
       </div>
-
-      {/* OTP Verification Popup */}
-      {showOtpPopup && (
-        <div className="fixed inset-0 flex items-center justify-center   z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-80">
-            <h3 className="text-lg font-semibold mb-4 text-gray-700">
-              Verify Email
-            </h3>
-            <input
-              type="text"
-              placeholder="Enter OTP"
-              value={enteredOtp}
-              onChange={(e) => setEnteredOtp(e.target.value)}
-              className="border p-2 w-full mb-3 text-gray-900"
-            />
-            <button
-              onClick={handleVerifyOtp}
-              className="bg-orange-500 text-white w-full py-2 rounded hover:bg-orange-600"
-            >
-              Verify & Register
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
