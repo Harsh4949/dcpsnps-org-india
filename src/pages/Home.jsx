@@ -1,5 +1,6 @@
 import pensionhand from '../assets/pension1.png';
 import Chat from './Chat.jsx';
+import Seo from '../components/Seo';
 
 
 export default function Home() {
@@ -30,6 +31,13 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <Seo
+        title="DCPS NPS India — Pension Support & Guidance"
+        description="Support, resources and community for DCPS/NPS pension holders in India. Learn about procedures, share posts, and get help."
+        ogTitle="DCPS NPS India — Pension Support & Guidance"
+        ogDescription="Support, resources and community for DCPS/NPS pension holders in India. Learn about procedures, share posts, and get help."
+      />
 
       {/* Right: Content */}
       <div className="flex-1 text-center md:text-left md:pr-6 lg:pr-10 flex flex-col">

@@ -18,6 +18,7 @@ import {
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Seo from '../components/Seo';
 import { auth, db, storage } from "../firebase";
 import { ref, onValue, update, remove, push, set, get } from "firebase/database";
 import { ref as sRef, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -189,6 +190,10 @@ useEffect(() => {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--body-color)] pt-24 px-4">
+        <Seo
+          title="DCPS NPS — Community Posts (Login Required)"
+          description="Community posts for DCPS/NPS pension holders. Login to view and participate in discussions and share updates."
+        />
         <h1 className="text-3xl md:text-5xl font-bold text-yellow-300 mb-6 text-center">
           Please Login to Continue
         </h1>
@@ -197,6 +202,11 @@ useEffect(() => {
   }
 
   return (
+    <>
+      <Seo
+        title="DCPS NPS — Community Posts"
+        description="Community posts and discussions for DCPS/NPS pension holders in India. Share updates, ask questions, and find support."
+      />
     <div
       style={{ background: "var(--body-color)" }}
       className="min-h-screen pt-24 px-4"
@@ -616,5 +626,6 @@ useEffect(() => {
         theme="dark"
       />
     </div>
+    </>
   );
 }

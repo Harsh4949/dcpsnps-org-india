@@ -1,13 +1,18 @@
 import aboutpng from '../assets/about2.png';
 import Chat from './Chat.jsx';
+import Seo from '../components/Seo';
 
 export default function About() {
   return (
-    <section id="About"
-      className="relative min-h-screen flex flex-col md:flex-row items-center justify-between 
-                 px-6 md:px-24 lg:px-40 pt-0 pb-8 gap-12"
+    <section
+      id="About"
+      className="relative min-h-screen flex flex-col md:flex-row items-center justify-between px-6 md:px-24 lg:px-40 pt-0 pb-8 gap-12"
       style={{ background: "var(--body-color)" }}
     >
+      <Seo
+        title="About DCPS-NPS — Purpose & Community"
+        description="About DCPS-NPS Employees' Foundation — mission, purpose and how we help DCPS/NPS pension holders navigate the National Pension Scheme in India."
+      />
       {/* Left: Animated Hand with Label */}
       <div className="flex-1 flex flex-col items-center mb-8 md:mb-0">
         <img

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ref, push } from "firebase/database";
 import { db } from "../firebase";
+import Seo from '../components/Seo';
 
 // State → District mapping for India
 const stateDistrictData = {
@@ -870,6 +871,10 @@ const ContactUs = () => {
       className="min-h-screen flex items-center justify-center px-4"
       style={{ background: "var(--body-color)" }}
     >
+      <Seo
+        title="Contact DCPS-NPS — Get Support & Send Message"
+        description="Contact the DCPS-NPS Employees' Foundation. Send your queries, requests, or updates about NPS/DCPS pension issues and community posts."
+      />
       <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-2xl">
         <h2 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-6 text-center">
           📞 Contact Us
