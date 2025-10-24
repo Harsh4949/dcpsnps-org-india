@@ -1,12 +1,16 @@
 @import "tailwindcss";
 
-body {
-  font-family: 'Poppins', sans-serif;
+:root {
+  --font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+html, body {
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
   scroll-behavior: smooth;
 }
-  
+
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-12px); }
