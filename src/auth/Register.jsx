@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import logo from "../assets/logo1.png";
-import emailjs from "emailjs-com";
+import emailjs from "@emailjs/browser";
 import { fetchSignInMethodsForEmail } from "firebase/auth";
 
 
