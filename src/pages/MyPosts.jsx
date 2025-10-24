@@ -18,7 +18,7 @@ import {
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { auth, db, storage } from "../firebase";
+import { auth, db, storage } from "../services/firebase";
 import { ref, onValue, update, remove, push, set } from "firebase/database";
 import { ref as sRef, uploadBytes, getDownloadURL } from "firebase/storage";
 

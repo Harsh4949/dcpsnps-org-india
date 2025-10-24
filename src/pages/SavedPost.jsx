@@ -18,7 +18,7 @@ import {
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { auth, db } from "../firebase";
+import { auth, db } from "../services/firebase";
 import { ref, onValue, push, update, remove } from "firebase/database";
 
 export default function SavedPost() {

@@ -1,7 +1,7 @@
 // src/pages/Profile.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
-import { auth, db, storage } from "../firebase";
+import { auth, db, storage } from "../services/firebase";
 import { ref, get, update } from "firebase/database";
 import { getDownloadURL, ref as sRef, uploadBytes } from "firebase/storage";
 import { updateProfile } from "firebase/auth";

@@ -1,9 +1,9 @@
 import logo from "../assets/logo1.png";
 import { useState, useEffect } from "react";
-import { auth, db } from "../firebase";
+import { auth, db } from "../services/firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { ref, get } from "firebase/database";
-import AuthModalManager from "../auth/ModalManager";
+import AuthModalManager from "../features/auth/ModalManager";
 import { FaUserCircle } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
 

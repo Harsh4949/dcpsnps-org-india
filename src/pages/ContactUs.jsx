@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ref, push } from "firebase/database";
-import { db } from "../firebase";
+import { db } from "../services/firebase";
 import Seo from '../components/Seo';
 
 // State → District mapping for India

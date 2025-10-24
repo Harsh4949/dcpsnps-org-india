@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiImage, FiVideo, FiX } from "react-icons/fi";
-import { auth, db, storage } from "../firebase";
+import { auth, db, storage } from "../services/firebase";
 import { ref, push, serverTimestamp,get } from "firebase/database";
 import { ref as sRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast, ToastContainer } from "react-toastify";
