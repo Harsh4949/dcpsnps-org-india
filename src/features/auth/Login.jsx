@@ -108,6 +108,9 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
         <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">Welcome to DCPS</h2>
         <p className="text-center text-sm text-gray-600 mb-6">Sign in to continue</p>
 
+
+      {/* Sign in with Google button is commented out for now Coz of some issues */}
+
         {/* <button
           onClick={handleGoogleLogin}
           className="flex items-center justify-center gap-3 border border-gray-300 py-2 px-4 rounded w-full hover:bg-gray-100"
@@ -121,11 +124,15 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
           <span className="text-sm text-gray-700">Sign in with Google</span>
         </button> */}
 
+
+      {/* When done Fix above issue uncomment it.. */}
+
+      {/* 
         <div className="my-5 flex items-center">
           <hr className="flex-grow border-gray-300" />
           <span className="mx-3 text-sm text-gray-500">Or</span>
           <hr className="flex-grow border-gray-300" />
-        </div>
+        </div> */}
 
         <div className="relative mb-4">
           <FaEnvelope className="absolute left-3 top-3.5 text-gray-400" />
