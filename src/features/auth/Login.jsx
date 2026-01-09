@@ -108,7 +108,7 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
         <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">Welcome to DCPS</h2>
         <p className="text-center text-sm text-gray-600 mb-6">Sign in to continue</p>
 
-        <button
+        {/* <button
           onClick={handleGoogleLogin}
           className="flex items-center justify-center gap-3 border border-gray-300 py-2 px-4 rounded w-full hover:bg-gray-100"
         >
@@ -119,7 +119,7 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
             <path fill="#34A853" d="M24 48c6.48 0 11.92-2.14 15.9-5.8l-7.14-5.54c-2.06 1.38-4.72 2.18-8.76 2.18-6.27 0-11.62-4.21-13.52-9.96l-7.9 6.27C6.4 42.36 14.64 48 24 48z" />
           </svg>
           <span className="text-sm text-gray-700">Sign in with Google</span>
-        </button>
+        </button> */}
 
         <div className="my-5 flex items-center">
           <hr className="flex-grow border-gray-300" />
