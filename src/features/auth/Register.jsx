@@ -1,102 +1,222 @@
 import { useState } from "react";
-import logo from "../../assets/logo1.png";
-import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { auth, db } from "../../services/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  updateProfile,
+  signOut,
+} from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { toast } from "react-toastify";
 
 const Register = ({ onClose, onSwitchToLogin }) => {
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ username: "", email: "", password: "" });
+  const [success, setSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
-  const handleChange = (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // OTP (demo)
+  const [otpSent, setOtpSent] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
-  const handleRegister = async () => {
-    if (!formData.email || !formData.password || !formData.username) {
-      toast.error("Please fill all fields");
+  const [formData, setFormData] = useState({
+    fullName: "",
+    gender: "",
+    dob: "",
+    village: "",
+    district: "",
+    state: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
+
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  // 📲 SEND OTP (DEMO)
+  const sendOtp = () => {
+    if (!/^\d{10}$/.test(formData.phone)) {
+      toast.error("Enter valid 10-digit mobile number");
       return;
     }
+
+    const otp = "123456";
+    setGeneratedOtp(otp);
+    setOtpSent(true);
+
+    console.log("DEMO OTP:", otp);
+    toast.success("OTP sent (demo: 123456)");
+  };
+
+  // ✅ VERIFY OTP
+  const verifyOtp = () => {
+    if (enteredOtp === generatedOtp) {
+      setPhoneVerified(true);
+      toast.success("Mobile number verified");
+    } else {
+      toast.error("Invalid OTP");
+    }
+  };
+
+  const validateForm = () => {
+    if (Object.values(formData).some((v) => !v)) {
+      toast.error("Please fill all fields");
+      return false;
+    }
+
+    if (!phoneVerified) {
+      toast.error("Please verify mobile number");
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return false;
+    }
+
+    return true;
+  };
+
+  // 🧾 REGISTER
+  const handleRegister = async () => {
+    if (!validateForm()) return;
+
     try {
       setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
       const user = userCredential.user;
 
-      // update display name
-      await updateProfile(user, { displayName: formData.username });
-
-      // Save basic profile in realtime DB
-      await set(ref(db, "users/" + user.uid), {
-        username: formData.username,
-        email: formData.email,
-        createdAt: new Date().toISOString(),
+      await updateProfile(user, {
+        displayName: formData.fullName,
       });
 
-      await sendEmailVerification(user);
-      toast.success("Account created. Verification email sent.");
-      onClose();
+      await set(ref(db, `users/${user.uid}`), {
+        fullName: formData.fullName,
+        gender: formData.gender,
+        dob: formData.dob,
+        email: formData.email,
+        phone: formData.phone,
+        phoneVerified: true,
+        address: {
+          village: formData.village,
+          district: formData.district,
+          state: formData.state,
+        },
+        createdAt: Date.now(),
+      });
+
+      await sendEmailVerification(user, {
+        url: window.location.origin,
+      });
+
+      await signOut(auth);
+
+      setRegisteredEmail(formData.email);
+      setSuccess(true);
     } catch (error) {
-      toast.error(error.message || "Failed to create account");
+      toast.error(
+        error.code === "auth/email-already-in-use"
+          ? "Email already registered"
+          : "Registration failed"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black opacity-50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl w-[95%] max-w-lg p-8 z-10">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl">×</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div
+        className="relative bg-white w-[95%] max-w-md rounded-lg shadow-lg p-5"
+        style={{ maxHeight: "90vh", overflowY: "auto" }}
+      >
+        {/* ❌ CLOSE BUTTON */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-black text-xl"
+          title="Close"
+        >
+          ✕
+        </button>
 
-        <div className="flex justify-center mb-5">
-          <img src={logo} alt="Logo" className="h-12" />
-        </div>
+        {!success ? (
+          <>
+            <h2 className="text-xl font-semibold text-center text-black mb-3">
+              User Registration
+            </h2>
 
-        <h2 className="text-center text-2xl font-semibold text-gray-800 mb-1">Create your account</h2>
-        <p className="text-center text-sm text-gray-600 mb-6">Join the DCPS community</p>
+            <input className="input" name="fullName" placeholder="Full Name" onChange={handleChange} />
+            <select className="input" name="gender" onChange={handleChange}>
+              <option value="">Select Gender</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select>
+            <input className="input" type="date" name="dob" onChange={handleChange} />
+            <input className="input" name="village" placeholder="Village" onChange={handleChange} />
+            <input className="input" name="district" placeholder="District" onChange={handleChange} />
+            <input className="input" name="state" placeholder="State" onChange={handleChange} />
+            <input className="input" name="email" placeholder="Email Address" onChange={handleChange} />
+            <input className="input" name="phone" placeholder="Mobile Number" onChange={handleChange} />
 
-        <div className="relative mb-4">
-          <FaUser className="absolute left-3 top-3.5 text-gray-400" />
-          <input
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="Username"
-            className="w-full pl-10 pr-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
-          />
-        </div>
+            <button onClick={sendOtp} className="btn-blue">Send OTP</button>
 
-        <div className="relative mb-4">
-          <FaEnvelope className="absolute left-3 top-3.5 text-gray-400" />
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className="w-full pl-10 pr-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
-          />
-        </div>
+            <input
+              className="input"
+              placeholder="Enter OTP"
+              value={enteredOtp}
+              onChange={(e) => setEnteredOtp(e.target.value)}
+              disabled={!otpSent}
+            />
 
-        <div className="relative mb-4">
-          <FaLock className="absolute left-3 top-3.5 text-gray-400" />
-          <input
-            type={showPassword ? "text" : "password"}
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Password"
-            className="w-full pl-10 pr-10 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
-          />
-          <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
-            {showPassword ? <FaEyeSlash /> : <FaEye />}
-          </button>
-        </div>
+            <button onClick={verifyOtp} disabled={!otpSent} className="btn-green">
+              Verify OTP
+            </button>
 
-        <button onClick={handleRegister} disabled={loading} className="mt-2 w-full bg-orange-500 text-white py-2 rounded hover:bg-orange-600 transition">{loading ? 'Creating...' : 'Create Account'}</button>
+            <input
+              className="input"
+              type="password"
+              name="password"
+              placeholder="Password"
+              onChange={handleChange}
+            />
 
-        <p className="text-center text-sm text-gray-600 mt-4">Already have an account? <button onClick={onSwitchToLogin} className="text-orange-600 hover:underline">Login</button></p>
+            <button onClick={handleRegister} disabled={loading} className="btn-orange">
+              {loading ? "Creating Account..." : "Register"}
+            </button>
+
+            <p className="text-center text-sm text-black mt-2">
+              Already have an account?{" "}
+              <button onClick={onSwitchToLogin} className="text-orange-600 font-medium">
+                Login
+              </button>
+            </p>
+          </>
+        ) : (
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-green-600">
+              🎉 Registration Successful
+            </h2>
+            <p className="text-black mt-2">
+              Verification email sent to
+            </p>
+            <p className="font-semibold text-orange-600">
+              {registeredEmail}
+            </p>
+
+            <button onClick={onSwitchToLogin} className="btn-orange mt-4">
+              Go to Login
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
