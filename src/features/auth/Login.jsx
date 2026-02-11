@@ -23,13 +23,14 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
     try {
       setLoading(true);
 
+      // 🔐 Firebase login
       const { user } = await signInWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
       );
 
-      // Get user data from Realtime DB
+      // 📦 Get user data from DB
       const snapshot = await get(ref(db, `users/${user.uid}`));
 
       if (!snapshot.exists()) {
@@ -40,7 +41,7 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
 
       const userData = snapshot.val();
 
-      // OTP-based verification check
+      // ✅ OTP-based email verification check
       if (!userData.emailVerified) {
         await signOut(auth);
         toast.error("Please verify your email via OTP before login");
@@ -121,10 +122,7 @@ const LoginModal = ({ onClose, onSwitchToRegister, onSwitchToForgot }) => {
 
         <p className="text-center mt-4 text-sm">
           Don’t have an account?{" "}
-          <button
-            onClick={onSwitchToRegister}
-            className="text-orange-600"
-          >
+          <button onClick={onSwitchToRegister} className="text-orange-600">
             Register
           </button>
         </p>
