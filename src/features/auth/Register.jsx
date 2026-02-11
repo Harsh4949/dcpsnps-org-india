@@ -32,6 +32,9 @@ const Register = ({ onClose }) => {
   const [otpTimer, setOtpTimer] = useState(0);
   const [otpAttempts, setOtpAttempts] = useState(0);
 
+  // UI
+  const [showPassword, setShowPassword] = useState(false);
+
   // Location
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
@@ -58,7 +61,6 @@ const Register = ({ onClose }) => {
     "focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-400 mb-3";
 
   /* ================= OTP TIMERS ================= */
-
   useEffect(() => {
     if (resendTimer > 0) {
       const t = setInterval(() => setResendTimer((v) => v - 1), 1000);
@@ -77,8 +79,7 @@ const Register = ({ onClose }) => {
     }
   }, [otpTimer, otpSent, emailVerified]);
 
-  /* ================= OTP ================= */
-
+  /* ================= OTP LOGIC ================= */
   const generateOtp = () =>
     Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -116,15 +117,17 @@ const Register = ({ onClose }) => {
 
     if (enteredOtp !== generatedOtp) {
       setOtpAttempts((v) => v + 1);
-      toast.error("Invalid OTP");
+      toast.error(
+        `Invalid OTP (${OTP_MAX_ATTEMPTS - otpAttempts - 1} attempts left)`
+      );
       return;
     }
 
     setEmailVerified(true);
+    toast.success("Email verified successfully");
   };
 
   /* ================= LOCATION ================= */
-
   useEffect(() => {
     getStatesOfIndia().then(setStates);
   }, []);
@@ -136,8 +139,15 @@ const Register = ({ onClose }) => {
     setDistricts(await getDistrictsOfState(s.iso2));
   };
 
-  /* ================= REGISTER ================= */
+  /* ================= PASSWORD STRENGTH ================= */
+  const passwordStrength = () => {
+    const p = formData.password;
+    if (p.length < 6) return "Weak";
+    if (/[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p)) return "Strong";
+    return "Medium";
+  };
 
+  /* ================= REGISTER ================= */
   const handleRegister = async () => {
     if (!emailVerified) {
       toast.error("Verify email first");
@@ -151,7 +161,6 @@ const Register = ({ onClose }) => {
 
     try {
       setLoading(true);
-
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -160,6 +169,7 @@ const Register = ({ onClose }) => {
 
       const user = userCredential.user;
 
+<<<<<<< HEAD
       const fullName = `${formData.firstName} ${formData.middleName} ${formData.lastName}`;
       await updateProfile(user, { displayName: fullName });
 
@@ -181,11 +191,11 @@ const Register = ({ onClose }) => {
   };
 
   /* ================= UI ================= */
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="relative bg-white w-[95%] max-w-md rounded-lg shadow-lg max-h-[90vh] overflow-hidden">
-        <div className="p-5 max-h-[90vh] overflow-y-auto">
+        {/* Scrollable content */}
+        <div className="p-5 max-h-[90vh] overflow-y-auto no-scrollbar">
 
           <button
             onClick={onClose}
@@ -193,87 +203,96 @@ const Register = ({ onClose }) => {
           >
             ✕
           </button>
-          <div className="flex justify-center mb-4">
-  <img src={logo} alt="logo" className="h-12" />
-</div>
 
-          <h2 className="text-xl font-semibold text-center mb-4">
-            User Registration
-          </h2>
-          <p className="text-center text-gray-500 text-sm mb-6">
-            Create your account
-          </p>
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="logo" className="h-12" />
+          </div>
+
+          <h2 className="text-xl font-semibold text-center mb-4">User Registration</h2>
+          <p className="text-center text-gray-500 text-sm mb-6">Create your account</p>
 
           {!success ? (
             <>
-              <input className={fieldStyle} placeholder="First Name" onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
-              <input className={fieldStyle} placeholder="Middle Name" onChange={(e) => setFormData({ ...formData, middleName: e.target.value })} />
-              <input className={fieldStyle} placeholder="Last Name" onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
+              <input className={fieldStyle} placeholder="First Name" onChange={e => setFormData({ ...formData, firstName: e.target.value })} />
+              <input className={fieldStyle} placeholder="Middle Name" onChange={e => setFormData({ ...formData, middleName: e.target.value })} />
+              <input className={fieldStyle} placeholder="Last Name" onChange={e => setFormData({ ...formData, lastName: e.target.value })} />
 
-              <select className={fieldStyle} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
+              <select className={fieldStyle} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
                 <option value="">Select Gender</option>
                 <option>Male</option>
                 <option>Female</option>
                 <option>Other</option>
               </select>
 
-              <input type="date" className={fieldStyle} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} />
-
-              <input className={fieldStyle} placeholder="Mobile Number" onChange={(e) => setFormData({ ...formData, mobile: e.target.value })} />
+              <input type="date" className={fieldStyle} onChange={e => setFormData({ ...formData, dob: e.target.value })} />
+              <input className={fieldStyle} placeholder="Mobile Number" onChange={e => setFormData({ ...formData, mobile: e.target.value })} />
 
               <select className={fieldStyle} onChange={handleStateChange}>
                 <option value="">Select State</option>
-                {states.map((s) => (
-                  <option key={s.iso2}>{s.name}</option>
-                ))}
+                {states.map(s => <option key={s.iso2}>{s.name}</option>)}
               </select>
-
-              <select className={fieldStyle} onChange={(e) => setFormData({ ...formData, district: e.target.value })}>
+              <select className={fieldStyle} onChange={e => setFormData({ ...formData, district: e.target.value })}>
                 <option value="">Select District</option>
-                {districts.map((d) => (
-                  <option key={d.id}>{d.name}</option>
-                ))}
+                {districts.map(d => <option key={d.id}>{d.name}</option>)}
               </select>
 
-              <input className={fieldStyle} placeholder="Village" onChange={(e) => setFormData({ ...formData, village: e.target.value })} />
-              <input className={fieldStyle} placeholder="Email Address" onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <input className={fieldStyle} placeholder="Village" onChange={e => setFormData({ ...formData, village: e.target.value })} />
 
-              {/* ===== OTP SECTION (ADJUSTED) ===== */}
-              <div className="">
+              {/* OTP Section */}
+              <div className="mb-3">
+                <input
+                  className={fieldStyle}
+                  placeholder="Email Address"
+                  value={formData.email}
+                  onChange={e => {
+                    setFormData({ ...formData, email: e.target.value });
+                    setOtpSent(false);
+                    setEnteredOtp("");
+                    setEmailVerified(false);
+                    setOtpAttempts(0);
+                  }}
+                />
                 <button
                   onClick={sendEmailOtp}
-                  className="w-full bg-orange-100 text-orange-600 py-2 rounded-lg font-medium mb-3"
+                  disabled={resendTimer > 0 || !formData.email}
+                  className="w-full bg-orange-100 text-orange-600 py-2 rounded-lg font-medium mb-2 hover:bg-orange-200 transition-colors"
                 >
-                  Send Email OTP
+                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Send Email OTP"}
                 </button>
-
                 <input
                   className={fieldStyle}
                   placeholder="Enter OTP"
+                  value={enteredOtp}
                   onChange={(e) => setEnteredOtp(e.target.value)}
                 />
-
                 <button
                   onClick={verifyOtp}
-                  className="w-full bg-orange-100 text-orange-600 py-2 rounded-lg font-medium mb-3"
+                  disabled={!otpSent || emailVerified}
+                  className={`w-full py-2 rounded-lg font-medium mb-3 ${
+                    emailVerified
+                      ? "bg-orange-100 text-orange-600 cursor-not-allowed"
+                      : "bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                  }`}
                 >
-                  Verify OTP
+                  {emailVerified ? "OTP Verified ✅" : "Verify OTP"}
                 </button>
+                {otpSent && !emailVerified && (
+                  <p className="text-sm text-gray-500">
+                    OTP valid for {otpTimer}s | Attempts left: {OTP_MAX_ATTEMPTS - otpAttempts}
+                  </p>
+                )}
               </div>
 
-              {/* ===== PASSWORD SECTION ===== */}
-              <input type="password" className={fieldStyle} placeholder="Password" onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-              <input type="password" className={fieldStyle} placeholder="Confirm Password" onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} />
+              <input type={showPassword ? "text" : "password"} className={fieldStyle} placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} />
+              <input type="password" className={fieldStyle} placeholder="Confirm Password" onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
 
-              <button onClick={handleRegister} className="w-full bg-orange-500 text-white py-3 rounded-xl">
+              <button onClick={handleRegister} className="w-full bg-orange-500 text-white py-3 rounded-xl mt-2">
                 Register
               </button>
             </>
           ) : (
             <div className="text-center py-10">
-              <h2 className="text-orange-600 font-semibold text-lg">
-                Registration Successful
-              </h2>
+              <h2 className="text-orange-600 font-semibold text-lg">Registration Successful</h2>
               <p>{registeredEmail}</p>
             </div>
           )}
