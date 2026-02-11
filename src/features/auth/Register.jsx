@@ -1,91 +1,166 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { auth, db } from "../../services/firebase";
 import {
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   updateProfile,
   signOut,
 } from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { toast } from "react-toastify";
+import emailjs from "@emailjs/browser";
 
-const Register = ({ onClose, onSwitchToLogin }) => {
+import {
+  getStatesOfIndia,
+  getDistrictsOfState,
+} from "../../services/locationApi";
+import logo from "../../assets/logo1.png";
+
+const OTP_EXPIRY_TIME = 300;
+const OTP_MAX_ATTEMPTS = 3;
+
+const Register = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
 
-  // OTP (demo)
+  // OTP
   const [otpSent, setOtpSent] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [enteredOtp, setEnteredOtp] = useState("");
-  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [otpTimer, setOtpTimer] = useState(0);
+  const [otpAttempts, setOtpAttempts] = useState(0);
+
+  // UI
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Location
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     gender: "",
     dob: "",
-    village: "",
-    district: "",
+    mobile: "",
     state: "",
+    stateIso: "",
+    district: "",
+    village: "",
     email: "",
-    phone: "",
     password: "",
+    confirmPassword: "",
   });
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const fieldStyle =
+    "w-full rounded-md border border-blue-200 px-4 py-2.5 text-sm " +
+    "text-black placeholder:text-black bg-white appearance-none " +
+    "focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-400 mb-3";
 
-  // 📲 SEND OTP (DEMO)
-  const sendOtp = () => {
-    if (!/^\d{10}$/.test(formData.phone)) {
-      toast.error("Enter valid 10-digit mobile number");
+  /* ================= OTP TIMERS ================= */
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const t = setInterval(() => setResendTimer((v) => v - 1), 1000);
+      return () => clearInterval(t);
+    }
+  }, [resendTimer]);
+
+  useEffect(() => {
+    if (otpTimer > 0) {
+      const t = setInterval(() => setOtpTimer((v) => v - 1), 1000);
+      return () => clearInterval(t);
+    }
+    if (otpTimer === 0 && otpSent && !emailVerified) {
+      toast.error("OTP expired. Please resend OTP.");
+      setOtpSent(false);
+    }
+  }, [otpTimer, otpSent, emailVerified]);
+
+  /* ================= OTP LOGIC ================= */
+  const generateOtp = () =>
+    Math.floor(100000 + Math.random() * 900000).toString();
+
+  const sendEmailOtp = async () => {
+    if (!formData.email) {
+      toast.error("Enter email first");
       return;
     }
 
-    const otp = "123456";
+    const otp = generateOtp();
     setGeneratedOtp(otp);
     setOtpSent(true);
+    setOtpTimer(OTP_EXPIRY_TIME);
+    setOtpAttempts(0);
+    setResendTimer(60);
 
-    console.log("DEMO OTP:", otp);
-    toast.success("OTP sent (demo: 123456)");
+    try {
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        { to_email: formData.email, otp },
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      );
+      toast.success("OTP sent to email");
+    } catch {
+      toast.error("Failed to send OTP");
+    }
   };
 
-  // ✅ VERIFY OTP
   const verifyOtp = () => {
-    if (enteredOtp === generatedOtp) {
-      setPhoneVerified(true);
-      toast.success("Mobile number verified");
-    } else {
-      toast.error("Invalid OTP");
+    if (otpAttempts >= OTP_MAX_ATTEMPTS) {
+      toast.error("Too many attempts. Please resend OTP.");
+      return;
     }
+
+    if (enteredOtp !== generatedOtp) {
+      setOtpAttempts((v) => v + 1);
+      toast.error(
+        `Invalid OTP (${OTP_MAX_ATTEMPTS - otpAttempts - 1} attempts left)`
+      );
+      return;
+    }
+
+    setEmailVerified(true);
+    toast.success("Email verified successfully");
   };
 
-  const validateForm = () => {
-    if (Object.values(formData).some((v) => !v)) {
-      toast.error("Please fill all fields");
-      return false;
-    }
+  /* ================= LOCATION ================= */
+  useEffect(() => {
+    getStatesOfIndia().then(setStates);
+  }, []);
 
-    if (!phoneVerified) {
-      toast.error("Please verify mobile number");
-      return false;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return false;
-    }
-
-    return true;
+  const handleStateChange = async (e) => {
+    const s = states.find((x) => x.name === e.target.value);
+    if (!s) return;
+    setFormData({ ...formData, state: s.name, stateIso: s.iso2, district: "" });
+    setDistricts(await getDistrictsOfState(s.iso2));
   };
 
-  // 🧾 REGISTER
+  /* ================= PASSWORD STRENGTH ================= */
+  const passwordStrength = () => {
+    const p = formData.password;
+    if (p.length < 6) return "Weak";
+    if (/[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p)) return "Strong";
+    return "Medium";
+  };
+
+  /* ================= REGISTER ================= */
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    if (!emailVerified) {
+      toast.error("Verify email first");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
 
     try {
       setLoading(true);
-
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -94,129 +169,134 @@ const Register = ({ onClose, onSwitchToLogin }) => {
 
       const user = userCredential.user;
 
-      await updateProfile(user, {
-        displayName: formData.fullName,
-      });
+<<<<<<< HEAD
+      const fullName = `${formData.firstName} ${formData.middleName} ${formData.lastName}`;
+      await updateProfile(user, { displayName: fullName });
 
       await set(ref(db, `users/${user.uid}`), {
-        fullName: formData.fullName,
-        gender: formData.gender,
-        dob: formData.dob,
-        email: formData.email,
-        phone: formData.phone,
-        phoneVerified: true,
-        address: {
-          village: formData.village,
-          district: formData.district,
-          state: formData.state,
-        },
+        ...formData,
+        fullName,
+        emailVerified: true,
         createdAt: Date.now(),
       });
 
-      await sendEmailVerification(user, {
-        url: window.location.origin,
-      });
-
       await signOut(auth);
-
       setRegisteredEmail(formData.email);
       setSuccess(true);
-    } catch (error) {
-      toast.error(
-        error.code === "auth/email-already-in-use"
-          ? "Email already registered"
-          : "Registration failed"
-      );
+    } catch {
+      toast.error("Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ================= UI ================= */
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div
-        className="relative bg-white w-[95%] max-w-md rounded-lg shadow-lg p-5"
-        style={{ maxHeight: "90vh", overflowY: "auto" }}
-      >
-        {/* ❌ CLOSE BUTTON */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-black text-xl"
-          title="Close"
-        >
-          ✕
-        </button>
+      <div className="relative bg-white w-[95%] max-w-md rounded-lg shadow-lg max-h-[90vh] overflow-hidden">
+        {/* Scrollable content */}
+        <div className="p-5 max-h-[90vh] overflow-y-auto no-scrollbar">
 
-        {!success ? (
-          <>
-            <h2 className="text-xl font-semibold text-center text-black mb-3">
-              User Registration
-            </h2>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-xl text-gray-400 hover:text-red-500"
+          >
+            ✕
+          </button>
 
-            <input className="input" name="fullName" placeholder="Full Name" onChange={handleChange} />
-            <select className="input" name="gender" onChange={handleChange}>
-              <option value="">Select Gender</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
-            </select>
-            <input className="input" type="date" name="dob" onChange={handleChange} />
-            <input className="input" name="village" placeholder="Village" onChange={handleChange} />
-            <input className="input" name="district" placeholder="District" onChange={handleChange} />
-            <input className="input" name="state" placeholder="State" onChange={handleChange} />
-            <input className="input" name="email" placeholder="Email Address" onChange={handleChange} />
-            <input className="input" name="phone" placeholder="Mobile Number" onChange={handleChange} />
-
-            <button onClick={sendOtp} className="btn-blue">Send OTP</button>
-
-            <input
-              className="input"
-              placeholder="Enter OTP"
-              value={enteredOtp}
-              onChange={(e) => setEnteredOtp(e.target.value)}
-              disabled={!otpSent}
-            />
-
-            <button onClick={verifyOtp} disabled={!otpSent} className="btn-green">
-              Verify OTP
-            </button>
-
-            <input
-              className="input"
-              type="password"
-              name="password"
-              placeholder="Password"
-              onChange={handleChange}
-            />
-
-            <button onClick={handleRegister} disabled={loading} className="btn-orange">
-              {loading ? "Creating Account..." : "Register"}
-            </button>
-
-            <p className="text-center text-sm text-black mt-2">
-              Already have an account?{" "}
-              <button onClick={onSwitchToLogin} className="text-orange-600 font-medium">
-                Login
-              </button>
-            </p>
-          </>
-        ) : (
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-green-600">
-              🎉 Registration Successful
-            </h2>
-            <p className="text-black mt-2">
-              Verification email sent to
-            </p>
-            <p className="font-semibold text-orange-600">
-              {registeredEmail}
-            </p>
-
-            <button onClick={onSwitchToLogin} className="btn-orange mt-4">
-              Go to Login
-            </button>
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="logo" className="h-12" />
           </div>
-        )}
+
+          <h2 className="text-xl font-semibold text-center mb-4">User Registration</h2>
+          <p className="text-center text-gray-500 text-sm mb-6">Create your account</p>
+
+          {!success ? (
+            <>
+              <input className={fieldStyle} placeholder="First Name" onChange={e => setFormData({ ...formData, firstName: e.target.value })} />
+              <input className={fieldStyle} placeholder="Middle Name" onChange={e => setFormData({ ...formData, middleName: e.target.value })} />
+              <input className={fieldStyle} placeholder="Last Name" onChange={e => setFormData({ ...formData, lastName: e.target.value })} />
+
+              <select className={fieldStyle} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
+                <option value="">Select Gender</option>
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+              </select>
+
+              <input type="date" className={fieldStyle} onChange={e => setFormData({ ...formData, dob: e.target.value })} />
+              <input className={fieldStyle} placeholder="Mobile Number" onChange={e => setFormData({ ...formData, mobile: e.target.value })} />
+
+              <select className={fieldStyle} onChange={handleStateChange}>
+                <option value="">Select State</option>
+                {states.map(s => <option key={s.iso2}>{s.name}</option>)}
+              </select>
+              <select className={fieldStyle} onChange={e => setFormData({ ...formData, district: e.target.value })}>
+                <option value="">Select District</option>
+                {districts.map(d => <option key={d.id}>{d.name}</option>)}
+              </select>
+
+              <input className={fieldStyle} placeholder="Village" onChange={e => setFormData({ ...formData, village: e.target.value })} />
+
+              {/* OTP Section */}
+              <div className="mb-3">
+                <input
+                  className={fieldStyle}
+                  placeholder="Email Address"
+                  value={formData.email}
+                  onChange={e => {
+                    setFormData({ ...formData, email: e.target.value });
+                    setOtpSent(false);
+                    setEnteredOtp("");
+                    setEmailVerified(false);
+                    setOtpAttempts(0);
+                  }}
+                />
+                <button
+                  onClick={sendEmailOtp}
+                  disabled={resendTimer > 0 || !formData.email}
+                  className="w-full bg-orange-100 text-orange-600 py-2 rounded-lg font-medium mb-2 hover:bg-orange-200 transition-colors"
+                >
+                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Send Email OTP"}
+                </button>
+                <input
+                  className={fieldStyle}
+                  placeholder="Enter OTP"
+                  value={enteredOtp}
+                  onChange={(e) => setEnteredOtp(e.target.value)}
+                />
+                <button
+                  onClick={verifyOtp}
+                  disabled={!otpSent || emailVerified}
+                  className={`w-full py-2 rounded-lg font-medium mb-3 ${
+                    emailVerified
+                      ? "bg-orange-100 text-orange-600 cursor-not-allowed"
+                      : "bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                  }`}
+                >
+                  {emailVerified ? "OTP Verified ✅" : "Verify OTP"}
+                </button>
+                {otpSent && !emailVerified && (
+                  <p className="text-sm text-gray-500">
+                    OTP valid for {otpTimer}s | Attempts left: {OTP_MAX_ATTEMPTS - otpAttempts}
+                  </p>
+                )}
+              </div>
+
+              <input type={showPassword ? "text" : "password"} className={fieldStyle} placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} />
+              <input type="password" className={fieldStyle} placeholder="Confirm Password" onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
+
+              <button onClick={handleRegister} className="w-full bg-orange-500 text-white py-3 rounded-xl mt-2">
+                Register
+              </button>
+            </>
+          ) : (
+            <div className="text-center py-10">
+              <h2 className="text-orange-600 font-semibold text-lg">Registration Successful</h2>
+              <p>{registeredEmail}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
