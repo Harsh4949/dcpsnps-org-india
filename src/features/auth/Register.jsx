@@ -22,7 +22,7 @@ import enGB from "date-fns/locale/en-GB";
 registerLocale("en-GB", enGB);
 
 
-const OTP_EXPIRY_TIME = 300;
+const OTP_EXPIRY_TIME = 60;
 const OTP_MAX_ATTEMPTS = 3;
 
 const Register = ({ onClose }) => {
@@ -91,31 +91,55 @@ const [dobDate, setDobDate] = useState(null);
   const generateOtp = () =>
     Math.floor(100000 + Math.random() * 900000).toString();
 
-  const sendEmailOtp = async () => {
-    if (!formData.email) {
-      toast.error("Enter email first");
-      return;
-    }
+ const sendEmailOtp = async () => {
 
-    const otp = generateOtp();
-    setGeneratedOtp(otp);
-    setOtpSent(true);
-    setOtpTimer(OTP_EXPIRY_TIME);
-    setOtpAttempts(0);
-    setResendTimer(60);
+   setEmailVerified(false);
+  setEnteredOtp("");
 
-    try {
-      await emailjs.send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-        { to_email: formData.email, otp },
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-      );
-      toast.success("OTP sent to email");
-    } catch {
-      toast.error("Failed to send OTP");
-    }
-  };
+  // 🔴 Check ALL required fields before OTP
+  if (
+    !formData.firstName ||
+    !formData.middleName ||
+    !formData.lastName ||
+    !formData.gender ||
+    !dobDate ||
+    !formData.mobile ||
+    !formData.state ||
+    !formData.district ||
+    !formData.village ||
+    !formData.email
+  ) {
+    toast.error("Please fill all fields before sending OTP");
+    return;
+  }
+
+  // 🔴 Mobile validation (exact 10 digits)
+  if (!/^\d{10}$/.test(formData.mobile)) {
+    toast.error("Mobile number must be exactly 10 digits");
+    return;
+  }
+
+  const otp = generateOtp();
+  setGeneratedOtp(otp);
+  setOtpSent(true);
+  setOtpTimer(OTP_EXPIRY_TIME);
+  setOtpAttempts(0);
+  setResendTimer(60);
+
+  try {
+    await emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID,
+      import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+      { to_email: formData.email, otp },
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+    );
+    toast.success("OTP sent to email");
+  } catch {
+    toast.error("Failed to send OTP");
+  }
+};
+
+
 
   const verifyOtp = () => {
     if (otpAttempts >= OTP_MAX_ATTEMPTS) {
@@ -156,45 +180,89 @@ const [dobDate, setDobDate] = useState(null);
   };
 
   /* ================= REGISTER ================= */
-  const handleRegister = async () => {
-    if (!emailVerified) {
-      toast.error("Verify email first");
-      return;
-    }
+const handleRegister = async () => {
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
+  // 🔴 Final check - no field empty
+  if (
+    !formData.firstName ||
+    !formData.middleName ||
+    !formData.lastName ||
+    !formData.gender ||
+    !dobDate ||
+    !formData.mobile ||
+    !formData.state ||
+    !formData.district ||
+    !formData.village ||
+    !formData.email ||
+    !formData.password ||
+    !formData.confirmPassword
+  ) {
+    toast.error("Please fill all fields");
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
+  // 🔴 Mobile validation
+  if (!/^\d{10}$/.test(formData.mobile)) {
+    toast.error("Mobile number must be exactly 10 digits");
+    return;
+  }
 
-      const user = userCredential.user;
-      const fullName = `${formData.firstName} ${formData.middleName} ${formData.lastName}`;
-      await updateProfile(user, { displayName: fullName });
+  if (!emailVerified) {
+    toast.error("Verify email first");
+    return;
+  }
 
-      await set(ref(db, `users/${user.uid}`), {
-        ...formData,
-        fullName,
-        emailVerified: true,
-        createdAt: Date.now(),
-      });
+  if (formData.password !== formData.confirmPassword) {
+    toast.error("Passwords do not match");
+    return;
+  }
 
-      await signOut(auth);
-      setRegisteredEmail(formData.email);
-      setSuccess(true);
-    } catch {
-      toast.error("Registration failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
+
+    const user = userCredential.user;
+    const fullName = `${formData.firstName} ${formData.middleName} ${formData.lastName}`;
+
+    await updateProfile(user, { displayName: fullName });
+
+    await set(ref(db, `users/${user.uid}`), {
+      ...formData,
+      fullName,
+      emailVerified: true,
+      createdAt: Date.now(),
+    });
+
+    await signOut(auth);
+    setRegisteredEmail(formData.email);
+    setSuccess(true);
+
+  } catch (error) {
+
+  if (error.code === "auth/email-already-in-use") {
+    toast.error("This email is already registered. Please login.");
+  } 
+  else if (error.code === "auth/invalid-email") {
+    toast.error("Invalid email address");
+  } 
+  else if (error.code === "auth/weak-password") {
+    toast.error("Password should be at least 6 characters");
+  } 
+  else {
+    toast.error("Registration failed");
+  }
+
+} finally {
+  setLoading(false);
+}
+
+};
+
 
   /* ================= UI ================= */
   return (
@@ -229,7 +297,7 @@ const [dobDate, setDobDate] = useState(null);
                 <option>Female</option>
                 <option>Other</option>
               </select>
-<DatePicker
+  <DatePicker
   selected={dobDate}
   onChange={(date) => {
     setDobDate(date);
@@ -253,7 +321,26 @@ const [dobDate, setDobDate] = useState(null);
   isClearable
 />
 
-              <input className={fieldStyle} placeholder="Mobile Number" onChange={e => setFormData({ ...formData, mobile: e.target.value })} />
+<input
+  className={fieldStyle}
+  placeholder="Mobile Number"
+  value={formData.mobile}
+  maxLength={10} // restrict typing to 10 digits
+  onChange={(e) => {
+    const value = e.target.value;
+
+    // Allow only digits
+    if (!/^\d*$/.test(value)) return;
+
+    setFormData({ ...formData, mobile: value });
+  }}
+  onBlur={() => {
+    // Validate on leaving the field
+    if (formData.mobile.length !== 10) {
+      toast.error("Mobile number must be exactly 10 digits");
+    }
+  }}
+/>
 
               <select className={fieldStyle} onChange={handleStateChange}>
                 <option value="">Select State</option>
