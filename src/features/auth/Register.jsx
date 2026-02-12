@@ -156,6 +156,9 @@ const [dobDate, setDobDate] = useState(null);
     }
 
     setEmailVerified(true);
+     setResendTimer(0);
+  setOtpTimer(0);
+  setOtpSent(false);
     toast.success("Email verified successfully");
   };
 
