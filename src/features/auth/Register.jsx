@@ -368,12 +368,21 @@ const handleRegister = async () => {
                   }}
                 />
                 <button
-                  onClick={sendEmailOtp}
-                  disabled={resendTimer > 0 || !formData.email}
-                  className="w-full bg-orange-100 text-orange-600 py-2 rounded-lg font-medium mb-2 hover:bg-orange-200 transition-colors"
-                >
-                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Send Email OTP"}
-                </button>
+  onClick={sendEmailOtp}
+  disabled={resendTimer > 0 || !formData.email || emailVerified}
+  className={`w-full py-2 rounded-lg font-medium mb-2 ${
+    emailVerified
+      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+      : "bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+  }`}
+>
+  {resendTimer > 0
+    ? `Resend OTP in ${resendTimer}s`
+    : emailVerified
+    ? "Email Verified"
+    : "Send Email OTP"}
+</button>
+
                 <input
                   className={fieldStyle}
                   placeholder="Enter OTP"
