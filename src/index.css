@@ -122,3 +122,16 @@ body.modal-open {
 .react-datepicker__close-icon {
   display: none;
 }
+
+.input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #fb923c; /* soft orange */
+}
