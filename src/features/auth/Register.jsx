@@ -14,16 +14,71 @@ import {
   getDistrictsOfState,
 } from "../../services/locationApi";
 import logo from "../../assets/logo1.png";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { registerLocale } from "react-datepicker";
-import enGB from "date-fns/locale/en-GB";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
 
-registerLocale("en-GB", enGB);
+
+const normalize = (str) =>
+  str
+    .toLowerCase()
+    .replace("district", "")
+    .replace(/\s+/g, "")
+    .trim();
+const DISTRICT_ALIASES = {
+  buldhana: "Buldhana",
+  raigad: "Raigad",
+  mumbai: "Mumbai City",
+  mumbaisuburban: "Mumbai Suburban",
+  "mumbai city": "Mumbai City",
+  "mumbai suburban": "Mumbai Suburban"
+};
+
+
+
+
+
+const MAHARASHTRA_DISTRICTS = [
+  "Ahmednagar", "Akola", "Amravati", "Aurangabad",
+  "Beed", "Bhandara", "Buldhana", "Chandrapur",
+  "Dhule", "Gadchiroli", "Gondia", "Hingoli",
+  "Jalgaon", "Jalna", "Kolhapur", "Latur",
+  "Mumbai City", "Mumbai Suburban", "Nagpur",
+  "Nanded", "Nandurbar", "Nashik", "Osmanabad",
+  "Palghar", "Parbhani", "Pune", "Raigad",
+  "Ratnagiri", "Sangli", "Satara", "Sindhudurg",
+  "Solapur", "Thane", "Wardha", "Washim",
+  "Yavatmal"
+];
+
 
 
 const OTP_EXPIRY_TIME = 60;
 const OTP_MAX_ATTEMPTS = 3;
+const muiFieldStyle = {
+  mb: 1.2,
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "6px",
+    fontSize: "14px",
+    height: "44px",
+    backgroundColor: "#fff",
+  },
+  "& label.Mui-focused": {
+    color: "#f97316", // orange
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#bfdbfe", // blue-200
+  },
+  "&:hover .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#f97316",
+  },
+  "& .Mui-focused .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#f97316",
+  },
+};
+
 
 const Register = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
@@ -38,6 +93,7 @@ const Register = ({ onClose }) => {
   const [resendTimer, setResendTimer] = useState(0);
   const [otpTimer, setOtpTimer] = useState(0);
   const [otpAttempts, setOtpAttempts] = useState(0);
+  const [otpLocked, setOtpLocked] = useState(false);
 
   // UI
   const [showPassword, setShowPassword] = useState(false);
@@ -92,8 +148,14 @@ const [dobDate, setDobDate] = useState(null);
     Math.floor(100000 + Math.random() * 900000).toString();
 
  const sendEmailOtp = async () => {
+  if (otpSent && otpTimer > 0 && !otpLocked) {
+    // OTP is still valid, do nothing
+    toast.info(`OTP already sent. Please wait ${otpTimer}s`);
+    return;
+  }
 
-   setEmailVerified(false);
+  setOtpLocked(false); // 🔓 UNLOCK OTP on resend
+  setEmailVerified(false);
   setEnteredOtp("");
 
   // 🔴 Check ALL required fields before OTP
@@ -122,8 +184,10 @@ const [dobDate, setDobDate] = useState(null);
   const otp = generateOtp();
   setGeneratedOtp(otp);
   setOtpSent(true);
-  setOtpTimer(OTP_EXPIRY_TIME);
   setOtpAttempts(0);
+
+  // Only start timer if OTP is new
+  setOtpTimer(OTP_EXPIRY_TIME);
   setResendTimer(60);
 
   try {
@@ -141,38 +205,84 @@ const [dobDate, setDobDate] = useState(null);
 
 
 
-  const verifyOtp = () => {
-    if (otpAttempts >= OTP_MAX_ATTEMPTS) {
-      toast.error("Too many attempts. Please resend OTP.");
-      return;
-    }
 
-    if (enteredOtp !== generatedOtp) {
-      setOtpAttempts((v) => v + 1);
-      toast.error(
-        `Invalid OTP (${OTP_MAX_ATTEMPTS - otpAttempts - 1} attempts left)`
-      );
-      return;
-    }
+const verifyOtp = () => {
+  setOtpLocked(true); //locked
 
-    setEmailVerified(true);
-     setResendTimer(0);
+  // ❌ If OTP expired
+  if (enteredOtp !== generatedOtp) {
+  const newAttempts = otpAttempts + 1;
+  setOtpAttempts(newAttempts);
+
+  toast.error("Invalid OTP");
+
+  if (newAttempts >= OTP_MAX_ATTEMPTS) {
+    setOtpSent(false);
+    setGeneratedOtp("");
+    setEnteredOtp("");
+    setOtpTimer(0);
+    setResendTimer(60);
+  }
+
+  return;
+}
+
+
+  // ✅ Correct OTP
+  setEmailVerified(true);
+  setResendTimer(0);
   setOtpTimer(0);
   setOtpSent(false);
-    toast.success("Email verified successfully");
-  };
+
+  toast.success("Email verified successfully");
+};
+
 
   /* ================= LOCATION ================= */
   useEffect(() => {
     getStatesOfIndia().then(setStates);
   }, []);
 
-  const handleStateChange = async (e) => {
-    const s = states.find((x) => x.name === e.target.value);
-    if (!s) return;
-    setFormData({ ...formData, state: s.name, stateIso: s.iso2, district: "" });
-    setDistricts(await getDistrictsOfState(s.iso2));
-  };
+ const handleStateChange = async (e) => {
+  const stateName = e.target.value;
+  const s = states.find((x) => x.name === stateName);
+  if (!s) return;
+
+  setFormData((prev) => ({
+    ...prev,
+    state: stateName,
+    stateIso: s.iso2,
+    district: ""
+  }));
+
+  let data = await getDistrictsOfState(s.iso2);
+
+  // Normalize API district names
+  let finalDistricts = data.map(d => {
+    const key = d.name.toLowerCase().replace("district", "").replace(/\s+/g, "").trim();
+    const aliasName = DISTRICT_ALIASES[key] || d.name.trim();
+    return { ...d, name: aliasName };
+  });
+
+  // ✅ If state is Maharashtra, filter to known districts and force add missing
+  if (stateName.toLowerCase() === "maharashtra") {
+    finalDistricts = finalDistricts.filter(d =>
+      MAHARASHTRA_DISTRICTS.some(md => md.toLowerCase() === d.name.toLowerCase())
+    );
+
+    ["Buldhana", "Raigad"].forEach(dName => {
+      if (!finalDistricts.some(d => d.name.toLowerCase() === dName.toLowerCase())) {
+        finalDistricts.push({ name: dName });
+      }
+    });
+  }
+
+  // Sort alphabetically
+  finalDistricts.sort((a, b) => a.name.trim().toLowerCase().localeCompare(b.name.trim().toLowerCase()));
+
+  setDistricts(finalDistricts);
+};
+
 
   /* ================= PASSWORD STRENGTH ================= */
   const passwordStrength = () => {
@@ -241,7 +351,7 @@ const handleRegister = async () => {
       createdAt: Date.now(),
     });
 
-    await signOut(auth);
+    
     setRegisteredEmail(formData.email);
     setSuccess(true);
 
@@ -269,12 +379,13 @@ const handleRegister = async () => {
 
   /* ================= UI ================= */
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="relative bg-white w-[95%] max-w-md rounded-lg shadow-lg max-h-[90vh] overflow-hidden">
-        {/* Scrollable content */}
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div className="relative bg-white w-[95%] max-w-md rounded-lg shadow-lg max-h-[90vh] overflow-hidden">
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
         <div className="p-5 max-h-[90vh] overflow-y-auto no-scrollbar">
-
+          
           <button
+            type="button"
             onClick={onClose}
             className="absolute top-4 right-4 text-xl text-gray-400 hover:text-red-500"
           >
@@ -285,94 +396,169 @@ const handleRegister = async () => {
             <img src={logo} alt="logo" className="h-12" />
           </div>
 
-          <h2 className="text-xl font-semibold text-center mb-4">User Registration</h2>
-          <p className="text-center text-gray-500 text-sm mb-6">Create your account</p>
-
           {!success ? (
             <>
-              <input className={fieldStyle} placeholder="First Name" onChange={e => setFormData({ ...formData, firstName: e.target.value })} />
-              <input className={fieldStyle} placeholder="Middle Name" onChange={e => setFormData({ ...formData, middleName: e.target.value })} />
-              <input className={fieldStyle} placeholder="Last Name" onChange={e => setFormData({ ...formData, lastName: e.target.value })} />
+              {/* 🔽 ONLY SHOW WHEN NOT SUCCESS */}
+              <h2 className="text-xl font-semibold text-center mb-4">
+                User Registration
+              </h2>
+              <p className="text-center text-gray-500 text-sm mb-6">
+                Create your account
+              </p>
+              <TextField
+  label="First Name"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.firstName}
+  onChange={(e) =>
+    setFormData({ ...formData, firstName: e.target.value })
+  }
+/>
 
-              <select className={fieldStyle} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
-                <option value="">Select Gender</option>
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-              </select>
+
+              <TextField
+  label="Middle Name"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.middleName}
+  onChange={(e) =>
+    setFormData({ ...formData, middleName: e.target.value })
+  }
+/>
+
+              <TextField
+  label="Last Name"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.lastName}
+  onChange={(e) =>
+    setFormData({ ...formData, lastName: e.target.value })
+  }
+/>
+
+             <TextField
+  select
+  label="Gender"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.gender}
+  onChange={(e) =>
+    setFormData({ ...formData, gender: e.target.value })
+  }
+>
+  <MenuItem value="">Select Gender</MenuItem>
+  <MenuItem value="Male">Male</MenuItem>
+  <MenuItem value="Female">Female</MenuItem>
+  <MenuItem value="Other">Other</MenuItem>
+</TextField>
+
+
   <DatePicker
-  selected={dobDate}
+  label="Date of Birth"
+  value={dobDate}
   onChange={(date) => {
     setDobDate(date);
-
     if (date) {
-      const d = String(date.getDate()).padStart(2, "0");
-      const m = String(date.getMonth() + 1).padStart(2, "0");
-      const y = date.getFullYear();
-
-      setFormData({
-        ...formData,
-        dob: `${d}/${m}/${y}`, // ✅ 19/12/2002
-      });
+      const d = String(date.$D).padStart(2, "0");
+      const m = String(date.$M + 1).padStart(2, "0");
+      const y = date.$y;
+      setFormData({ ...formData, dob: `${d}/${m}/${y}` });
     }
   }}
-  placeholderText="Date of Birth"
-  className={fieldStyle}
-  wrapperClassName="w-full mb-3"
-  dateFormat="dd/MM/yyyy"   // ✅ DISPLAY
-  locale="en-GB"            // ✅ DAY FIRST
-  isClearable
+  slotProps={{
+    textField: {
+      fullWidth: true,
+      sx: muiFieldStyle
+    },
+  }}
 />
 
-<input
-  className={fieldStyle}
-  placeholder="Mobile Number"
+
+
+
+<TextField
+  label="Mobile Number"
+  fullWidth
+  sx={muiFieldStyle}
   value={formData.mobile}
-  maxLength={10} // restrict typing to 10 digits
+  inputProps={{ maxLength: 10 }}
   onChange={(e) => {
-    const value = e.target.value;
-
-    // Allow only digits
-    if (!/^\d*$/.test(value)) return;
-
-    setFormData({ ...formData, mobile: value });
-  }}
-  onBlur={() => {
-    // Validate on leaving the field
-    if (formData.mobile.length !== 10) {
-      toast.error("Mobile number must be exactly 10 digits");
-    }
+    if (!/^\d*$/.test(e.target.value)) return;
+    setFormData({ ...formData, mobile: e.target.value });
   }}
 />
 
-              <select className={fieldStyle} onChange={handleStateChange}>
-                <option value="">Select State</option>
-                {states.map(s => <option key={s.iso2}>{s.name}</option>)}
-              </select>
-              <select className={fieldStyle} onChange={e => setFormData({ ...formData, district: e.target.value })}>
-                <option value="">Select District</option>
-                {districts.map(d => <option key={d.id}>{d.name}</option>)}
-              </select>
 
-              <input className={fieldStyle} placeholder="Village" onChange={e => setFormData({ ...formData, village: e.target.value })} />
+              <TextField
+  select
+  label="State"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.state}
+  onChange={handleStateChange}
+>
+  <MenuItem value="">Select State</MenuItem>
+  {states.map((s) => (
+    <MenuItem key={s.iso2} value={s.name}>
+      {s.name}
+    </MenuItem>
+  ))}
+</TextField>
+
+            <TextField
+  select
+  label="District"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.district}
+  onChange={(e) =>
+    setFormData({ ...formData, district: e.target.value })
+  }
+>
+  <MenuItem value="">Select District</MenuItem>
+  {districts.map((d) => (
+    <MenuItem key={d.name} value={d.name}>
+
+      {d.name}
+    </MenuItem>
+  ))}
+</TextField>
+
+
+
+              <TextField
+  label="Village"
+  fullWidth
+  sx={muiFieldStyle}
+  value={formData.village}
+  onChange={(e) =>
+    setFormData({ ...formData, village: e.target.value })
+  }
+/>
+
 
               {/* OTP Section */}
               <div className="mb-3">
-                <input
-                  className={fieldStyle}
-                  placeholder="Email Address"
-                  value={formData.email}
-                  onChange={e => {
-                    setFormData({ ...formData, email: e.target.value });
-                    setOtpSent(false);
-                    setEnteredOtp("");
-                    setEmailVerified(false);
-                    setOtpAttempts(0);
-                  }}
-                />
+                <TextField
+  label="Email Address"
+  fullWidth
+  sx={muiFieldStyle}
+  disabled={otpSent || emailVerified}
+  value={formData.email}
+  onChange={(e) => {
+    setFormData({ ...formData, email: e.target.value });
+    setOtpSent(false);
+    setEnteredOtp("");
+    setEmailVerified(false);
+    setOtpAttempts(0);
+  }}
+/>
+
+
                 <button
+                type="button"
   onClick={sendEmailOtp}
-  disabled={resendTimer > 0 || !formData.email || emailVerified}
+ disabled={!formData.email || emailVerified}
   className={`w-full py-2 rounded-lg font-medium mb-2 ${
     emailVerified
       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -386,13 +572,17 @@ const handleRegister = async () => {
     : "Send Email OTP"}
 </button>
 
-                <input
-                  className={fieldStyle}
-                  placeholder="Enter OTP"
-                  value={enteredOtp}
-                  onChange={(e) => setEnteredOtp(e.target.value)}
-                />
+                <TextField
+  label="Enter OTP"
+  fullWidth
+  sx={muiFieldStyle}
+  disabled={otpLocked}
+  value={enteredOtp}
+  onChange={(e) => setEnteredOtp(e.target.value)}
+/>
+
                 <button
+                type="button"
                   onClick={verifyOtp}
                   disabled={!otpSent || emailVerified}
                   className={`w-full py-2 rounded-lg font-medium mb-3 ${
@@ -410,23 +600,68 @@ const handleRegister = async () => {
                 )}
               </div>
 
-              <input type={showPassword ? "text" : "password"} className={fieldStyle} placeholder="Password" onChange={e => setFormData({ ...formData, password: e.target.value })} />
-              <input type="password" className={fieldStyle} placeholder="Confirm Password" onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
+              <TextField
+  label="Password"
+  type="password"
+  fullWidth
+  sx={muiFieldStyle}
+  onChange={(e) =>
+    setFormData({ ...formData, password: e.target.value })
+  }
+/>
+
+
+              <TextField
+  label="Confirm Password"
+  type="password"
+  fullWidth
+  sx={muiFieldStyle}
+  onChange={(e) =>
+    setFormData({ ...formData, confirmPassword: e.target.value })
+  }
+/>
+
+
 
               <button onClick={handleRegister} className="w-full bg-orange-500 text-white py-3 rounded-xl mt-2">
                 Register
               </button>
             </>
           ) : (
-            <div className="text-center py-10">
-              <h2 className="text-orange-600 font-semibold text-lg">Registration Successful</h2>
-              <p>{registeredEmail}</p>
-            </div>
+          <div className="text-center py-6 px-4 flex flex-col items-center gap-3">
+    {/* Removed extra logo from success screen */}
+
+    {/* Congratulations with emoji inline */}
+    <h2 className="text-orange-600 font-semibold text-2xl mb-2">
+      Congratulations, {formData.firstName} {formData.middleName} {formData.lastName}{" "}
+      <span className="align-middle text-2xl">🎉</span>
+    </h2>
+
+    <p className="text-gray-600 text-sm">
+      Your account has been created successfully.
+    </p>
+    <p className="text-gray-600 text-sm">
+      You can now access your profile and services.
+    </p>
+
+    <button
+      onClick={onClose}
+      className="w-full bg-orange-500 text-white py-3 rounded-lg mt-4 hover:bg-orange-600 transition-colors"
+    >
+      Back to Home
+    </button>
+  </div>
+
+
           )}
         </div>
-      </div>
+      </LocalizationProvider>
     </div>
+      
+    </div>
+   
   );
+  
 };
 
 export default Register;
