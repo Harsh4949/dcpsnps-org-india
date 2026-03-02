@@ -6,17 +6,16 @@ import {
   FaRegComment,
   FaRegBookmark,
   FaBookmark,
-  FaShare
 } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Seo from "../components/Seo";
 import { auth, db } from "../services/firebase";
+import { FiShare2 } from "react-icons/fi";
+
 import { ref, onValue, update, remove, push, get } from "firebase/database";
-
 export default function Post() {
-
   const [posts, setPosts] = useState([]);
   const [user, setUser] = useState(null);
   const [commentInput, setCommentInput] = useState({});
@@ -73,26 +72,6 @@ export default function Post() {
     return;
   };
 
-  // ✅ Share (ADDED ONLY)
-  const handleShare = async (post) => {
-    const postUrl = `${window.location.origin}/post/${post.id}`;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: post.title || "Check this post",
-          text: post.content || "See this post",
-          url: postUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(postUrl);
-        toast.success("🔗 Link copied to clipboard!");
-      }
-    } catch {
-      toast.error("Failed to share");
-    }
-  };
-
   // ✅ Like
   const toggleLike = async (post) => {
     if (!user) return requireLogin();
@@ -122,68 +101,90 @@ export default function Post() {
       });
     }
   };
+  // ✅ SHARE FUNCTION
+const handleShare = async (post) => {
+  const postUrl = window.location.href;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: post.title || "Check this post",
+        text: post.content || "See this post",
+        url: postUrl,
+      });
+    } else {
+      const whatsappUrl =
+        `https://wa.me/?text=${encodeURIComponent(postUrl)}`;
+      window.open(whatsappUrl, "_blank");
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   // ✅ Add comment
   const addComment = async (postId) => {
-    if (!user) return requireLogin();
+  if (!user) return requireLogin();
 
-    const text = commentInput[postId]?.trim();
-    if (!text) return;
+  const text = commentInput[postId]?.trim();
+  if (!text) return;
 
-    try {
+  try {
 
-      const userRef = ref(db, `users/${user.uid}`);
-      const snap = await get(userRef);
+    const userRef = ref(db, `users/${user.uid}`);
+    const snap = await get(userRef);
 
-      let username = "User";
+    let username = "User";
 
-      if (snap.exists()) {
+    if (snap.exists()) {
 
-        const data = snap.val();
+      const data = snap.val();
 
-        username =
-          data.fullName ||
-          data.username ||
-          data.name ||
-          user.displayName ||
-          user.email.split("@")[0];
+      username =
+        data.fullName ||
+        data.username ||
+        data.name ||
+        user.displayName ||
+        user.email.split("@")[0];
 
-        if (!data.fullName) {
-          await update(userRef, {
-            fullName: username,
-            username: username
-          });
-        }
-
-      } else {
-
-        username =
-          user.displayName ||
-          user.email.split("@")[0];
-
+      // ✅ FIX old accounts automatically
+      if (!data.fullName) {
         await update(userRef, {
           fullName: username,
-          username: username,
-          email: user.email
+          username: username
         });
       }
 
-      await push(ref(db, `posts/${postId}/comments`), {
-        userId: user.uid,
+    } else {
+
+      username =
+        user.displayName ||
+        user.email.split("@")[0];
+
+      await update(userRef, {
+        fullName: username,
         username: username,
-        text: text,
-        time: Date.now(),
+        email: user.email
       });
 
-      setCommentInput(prev => ({
-        ...prev,
-        [postId]: ""
-      }));
-
-    } catch {
-      toast.error("Failed to comment");
     }
-  };
+
+    await push(ref(db, `posts/${postId}/comments`), {
+      userId: user.uid,
+      username: username,
+      text: text,
+      time: Date.now(),
+    });
+
+    setCommentInput(prev => ({
+      ...prev,
+      [postId]: ""
+    }));
+
+  } catch (err) {
+    toast.error("Failed to comment");
+  }
+};
 
   // ✅ Delete comment
   const deleteComment = async (postId, cid) => {
@@ -235,11 +236,11 @@ export default function Post() {
 
                 {/* HEADER */}
                 <div className="flex items-center gap-3 mb-2">
+
                   {postUser?.photoURL ? (
                     <img
                       src={postUser.photoURL}
                       className="w-10 h-10 rounded-full object-cover"
-                      alt="profile"
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-gray-500 text-white flex items-center justify-center font-bold">
@@ -258,7 +259,9 @@ export default function Post() {
                         : ""}
                     </div>
                   </div>
+
                 </div>
+
 
                 {/* CONTENT */}
                 {post.title && (
@@ -273,14 +276,15 @@ export default function Post() {
                   </div>
                 )}
 
+
                 {/* MEDIA */}
                 {post.mediaURL && (
                   <div className="mb-2">
+
                     {post.mediaType === "image" ? (
                       <img
                         src={post.mediaURL}
                         className="rounded-lg w-full max-h-80 object-contain"
-                        alt="post"
                       />
                     ) : (
                       <video
@@ -289,8 +293,10 @@ export default function Post() {
                         className="rounded-lg w-full max-h-80"
                       />
                     )}
+
                   </div>
                 )}
+
 
                 {/* ACTIONS */}
                 <div className="flex items-center gap-6 border-t pt-2 text-gray-700">
@@ -320,16 +326,15 @@ export default function Post() {
                       : <FaRegBookmark/>
                     }
                   </button>
-
-                  {/* ✅ SHARE BUTTON */}
                   <button
-                    onClick={() => handleShare(post)}
-                    className="hover:text-blue-600"
-                  >
-                    <FaShare/>
-                  </button>
+  onClick={() => handleShare(post)}
+  className="hover:text-blue-500"
+>
+  <FiShare2 />
+</button>
 
                 </div>
+
 
                 {/* COMMENT INPUT */}
                 <div className="flex gap-2 mt-3">
@@ -355,6 +360,7 @@ export default function Post() {
 
                 </div>
 
+
                 {/* COMMENTS LIST */}
                 {post.comments && (
                   <div className="mt-3 border-t pt-2 space-y-2">
@@ -363,39 +369,39 @@ export default function Post() {
                       .sort(([,a],[,b]) => a.time - b.time)
                       .map(([cid, c]) => (
 
-                        <div
-                          key={cid}
-                          className="bg-white rounded px-2 py-1 flex justify-between"
-                        >
+                      <div
+                        key={cid}
+                        className="bg-white rounded px-2 py-1 flex justify-between"
+                      >
 
-                          <div>
+                        <div>
 
-                            <div className="text-sm">
-                              <span className="font-semibold">
-                                {c.username || usersData[c.userId]?.fullName || "User"}
-                              </span>
-                              {" "}
-                              {c.text}
-                            </div>
-
-                            <div className="text-xs text-gray-400">
-                              {new Date(c.time).toLocaleString()}
-                            </div>
-
+                          <div className="text-sm">
+                            <span className="font-semibold">
+                              {c.username || usersData[c.userId]?.fullName || "User"}
+                            </span>
+                            {" "}
+                            {c.text}
                           </div>
 
-                          {user?.uid === c.userId && (
-                            <button
-                              onClick={() => deleteComment(post.id, cid)}
-                              className="text-xs text-red-500 hover:underline"
-                            >
-                              Delete
-                            </button>
-                          )}
+                          <div className="text-xs text-gray-400">
+                            {new Date(c.time).toLocaleString()}
+                          </div>
 
                         </div>
 
-                      ))}
+                        {user?.uid === c.userId && (
+                          <button
+                            onClick={() => deleteComment(post.id, cid)}
+                            className="text-xs text-red-500 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        )}
+
+                      </div>
+
+                    ))}
 
                   </div>
                 )}
