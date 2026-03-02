@@ -6,6 +6,7 @@ import {
   FaRegComment,
   FaRegBookmark,
   FaBookmark,
+  FaShare
 } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import { toast, ToastContainer } from "react-toastify";
@@ -14,6 +15,7 @@ import { auth, db } from "../services/firebase";
 import { ref, onValue, push, remove, set } from "firebase/database";
 
 export default function SavedPost() {
+
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [commentInput, setCommentInput] = useState({});
@@ -42,7 +44,7 @@ export default function SavedPost() {
     return () => unsubscribe();
   }, [user]);
 
-  // 🔹 Fetch all users (profile photos)
+  // 🔹 Fetch all users
   useEffect(() => {
     const usersRef = ref(db, "users");
     const unsubscribe = onValue(usersRef, (snap) => {
@@ -50,6 +52,26 @@ export default function SavedPost() {
     });
     return () => unsubscribe();
   }, []);
+
+  // 🔹 SHARE FUNCTION (ADDED ONLY THIS)
+  const handleShare = async (post) => {
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title || "Check this post",
+          text: post.content || "See this post",
+          url: postUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        toast.success("🔗 Link copied to clipboard!");
+      }
+    } catch {
+      toast.error("Failed to share");
+    }
+  };
 
   // 🔹 Like / Unlike
   const toggleLike = async (post) => {
@@ -83,12 +105,10 @@ export default function SavedPost() {
     };
 
     await push(ref(db, `posts/${postId}/comments`), commentData);
-
     toast.success("💬 Comment added!");
     setCommentInput({ ...commentInput, [postId]: "" });
   };
 
-  // 🔹 Delete Comment
   const deleteComment = async (postId, commentId) => {
     try {
       await remove(ref(db, `posts/${postId}/comments/${commentId}`));
@@ -98,7 +118,6 @@ export default function SavedPost() {
     }
   };
 
-  // 🔹 Toggle Comments Section
   const toggleComments = (postId) => {
     setShowComments((prev) => ({ ...prev, [postId]: !prev[postId] }));
   };
@@ -125,6 +144,7 @@ export default function SavedPost() {
         )}
 
         {posts.map((post) => {
+
           const likeCount = post.likes ? Object.keys(post.likes).length : 0;
           const isLiked = user && post.likes?.[user.uid];
 
@@ -133,6 +153,7 @@ export default function SavedPost() {
               key={post.id}
               className="bg-white rounded-lg p-5 mb-6 shadow"
             >
+
               {/* Header */}
               <div className="flex items-center gap-3 mb-3">
                 {usersData[post.userId]?.photoURL ? (
@@ -181,19 +202,31 @@ export default function SavedPost() {
 
               {/* Actions */}
               <div className="flex items-center gap-6 border-t pt-3">
+
                 <button onClick={() => toggleLike(post)} className="flex items-center gap-1">
                   {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
                   {likeCount}
                 </button>
+
                 <button onClick={() => toggleComments(post.id)} className="flex items-center gap-1">
                   <FaRegComment /> {post.comments ? Object.keys(post.comments).length : 0}
                 </button>
+
                 <button onClick={() => toggleSave(post)}>
                   {user && post.saved?.[user.uid] ? <FaBookmark /> : <FaRegBookmark />}
                 </button>
+
+                {/* ✅ SHARE BUTTON ADDED */}
+                <button
+                  onClick={() => handleShare(post)}
+                  className="hover:text-blue-600"
+                >
+                  <FaShare />
+                </button>
+
               </div>
 
-              {/* Comments */}
+              {/* Comments (UNCHANGED) */}
               {showComments[post.id] && (
                 <div className="mt-3">
                   {post.comments && Object.keys(post.comments).length > 0 ? (
@@ -222,21 +255,26 @@ export default function SavedPost() {
                     <p className="text-gray-500 text-sm">No comments yet.</p>
                   )}
 
-                  {/* Add Comment */}
                   <div className="flex gap-2 mt-2">
                     <input
                       type="text"
                       placeholder="Add comment..."
                       value={commentInput[post.id] || ""}
-                      onChange={(e) => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
+                      onChange={(e) =>
+                        setCommentInput({ ...commentInput, [post.id]: e.target.value })
+                      }
                       className="flex-1 border rounded p-2 text-sm"
                     />
-                    <button onClick={() => addComment(post.id)} className="bg-gray-700 text-white px-3 rounded">
+                    <button
+                      onClick={() => addComment(post.id)}
+                      className="bg-gray-700 text-white px-3 rounded"
+                    >
                       <FiSend />
                     </button>
                   </div>
                 </div>
               )}
+
             </div>
           );
         })}
