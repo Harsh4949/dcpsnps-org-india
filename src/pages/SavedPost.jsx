@@ -12,6 +12,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { auth, db } from "../services/firebase";
 import { ref, onValue, push, remove, set } from "firebase/database";
+import { FiShare2 } from "react-icons/fi";
 
 export default function SavedPost() {
   const [user, setUser] = useState(null);
@@ -68,7 +69,26 @@ export default function SavedPost() {
     await remove(ref(db, `posts/${post.id}/saved/${user.uid}`));
     toast.info("⚠️ Post unsaved");
   };
+// ✅ SHARE FUNCTION
+const handleShare = async (post) => {
+  const postUrl = window.location.href;
 
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: post.title || "Check this post",
+        text: post.content || "See this post",
+        url: postUrl,
+      });
+    } else {
+      const whatsappUrl =
+        `https://wa.me/?text=${encodeURIComponent(postUrl)}`;
+      window.open(whatsappUrl, "_blank");
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
   // 🔹 Add Comment
   const addComment = async (postId) => {
     if (!user) return toast.info("🔐 Please login to continue");
@@ -121,7 +141,7 @@ export default function SavedPost() {
         </h1>
 
         {posts.length === 0 && (
-          <p className="text-center text-gray-500">No saved posts yet.</p>
+          <p className="text-center text-black-500">No saved posts yet.</p>
         )}
 
         {posts.map((post) => {
@@ -180,18 +200,29 @@ export default function SavedPost() {
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-6 border-t pt-3">
-                <button onClick={() => toggleLike(post)} className="flex items-center gap-1">
-                  {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
-                  {likeCount}
-                </button>
-                <button onClick={() => toggleComments(post.id)} className="flex items-center gap-1">
-                  <FaRegComment /> {post.comments ? Object.keys(post.comments).length : 0}
-                </button>
-                <button onClick={() => toggleSave(post)}>
-                  {user && post.saved?.[user.uid] ? <FaBookmark /> : <FaRegBookmark />}
-                </button>
-              </div>
+             {/* Actions */}
+<div className="flex items-center gap-6 border-t pt-3">
+  <button onClick={() => toggleLike(post)} className="flex items-center gap-1">
+    {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+    {likeCount}
+  </button>
+
+  <button onClick={() => toggleComments(post.id)} className="flex items-center gap-1">
+    <FaRegComment /> {post.comments ? Object.keys(post.comments).length : 0}
+  </button>
+
+  <button onClick={() => toggleSave(post)}>
+    {user && post.saved?.[user.uid] ? <FaBookmark /> : <FaRegBookmark />}
+  </button>
+
+  {/* ✅ SHARE BUTTON ADDED HERE */}
+  <button
+    onClick={() => handleShare(post)}
+    className="flex items-center gap-1 hover:text-blue-500"
+  >
+    <FiShare2 />
+  </button>
+</div>
 
               {/* Comments */}
               {showComments[post.id] && (

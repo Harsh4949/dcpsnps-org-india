@@ -12,6 +12,8 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Seo from "../components/Seo";
 import { auth, db } from "../services/firebase";
+import { FiShare2 } from "react-icons/fi";
+import { useLocation } from "react-router-dom";
 
 import { ref, onValue, update, remove, push, get } from "firebase/database";
 export default function Post() {
@@ -19,6 +21,8 @@ export default function Post() {
   const [user, setUser] = useState(null);
   const [commentInput, setCommentInput] = useState({});
   const [usersData, setUsersData] = useState({});
+  const location = useLocation();
+const [sharedPost, setSharedPost] = useState(null);
 
   // ✅ Auth listener
   useEffect(() => {
@@ -27,6 +31,21 @@ export default function Post() {
     });
     return unsub;
   }, []);
+
+//find post
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const id = params.get("share");
+
+  if (!id) {
+    setSharedPost(null);
+    return;
+  }
+
+  const found = posts.find((p) => p.id === id);
+  setSharedPost(found || null);
+}, [location.search, posts]);
+
 
   // ✅ Fetch posts
   useEffect(() => {
@@ -100,6 +119,26 @@ export default function Post() {
       });
     }
   };
+  // ✅ SHARE FUNCTION
+  const handleShare = async (post) => {
+  const url = `${window.location.origin}/post?share=${post.id}`;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: post.title || "GenX Post",
+        text: post.content || "Check this post",
+        url,
+      });
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("🔗 Link copied!");
+      window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, "_blank");
+    }
+  } catch (err) {
+    toast.error("Failed to share");
+  }
+};
 
   // ✅ Add comment
   const addComment = async (postId) => {
@@ -175,6 +214,15 @@ export default function Post() {
     }
   };
 
+  // ✅ Final ordered list: shared post first, then others newest -> oldest
+const sortedPosts = [...posts].sort(
+  (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+);
+
+const displayPosts = sharedPost
+  ? [sharedPost, ...sortedPosts.filter((p) => p.id !== sharedPost.id)]
+  : sortedPosts;
+
   return (
     <>
       <Seo title="Community Feed" />
@@ -186,8 +234,7 @@ export default function Post() {
             Community Feed
           </h1>
 
-          {posts.map((post) => {
-
+          {displayPosts.map((post) => {
             const likeCount = post.likes
               ? Object.keys(post.likes).length
               : 0;
@@ -208,10 +255,10 @@ export default function Post() {
               "Anonymous";
 
             return (
-              <div
-                key={post.id}
-                className="bg-gray-100 rounded-lg shadow p-4"
-              >
+<div
+  key={post.id}
+  className="bg-gray-100 rounded-lg shadow p-4"
+>
 
                 {/* HEADER */}
                 <div className="flex items-center gap-3 mb-2">
@@ -305,6 +352,14 @@ export default function Post() {
                       : <FaRegBookmark/>
                     }
                   </button>
+                  <button
+  onClick={() => handleShare(post)}
+  className="hover:text-blue-500"
+  title="Share"
+  aria-label="Share"
+>
+  <FiShare2 size={18} />
+</button>
 
                 </div>
 
